@@ -1,6 +1,8 @@
 using SharedMemory;
 using System.IO;
 using UnityEngine;
+using System.Text;
+using UnityEditor;
 
 namespace Thundagun
 {
@@ -17,8 +19,9 @@ namespace Thundagun
 		public Transform Transform;
 		public ulong RefId;
 		public WorldConnector WorldConnector;
-		//private ulong _lastParent;
+		private SlotConnector _lastParent;
 		public bool IsRootSlot;
+		public ulong parentId;
 
 		public GameObject GeneratedGameObject { get; private set; }
 
@@ -67,29 +70,41 @@ namespace Thundagun
 			SetData();
 		}
 
+		private SlotConnector GetSlotConnectorById(ulong id)
+		{
+			if (WorldConnector.refIdToSlot.TryGetValue(id, out var parentSlot))
+			{
+				return parentSlot;
+			}
+			return null;
+		}
+
 		public void UpdateParent()
 		{
-			var gameObject = ParentConnector != null ? ParentConnector.RequestGameObject() : WorldConnector.WorldRoot;
-			Transform.SetParent(gameObject.transform, false);
+			//var gameObject = ParentConnector != null ? ParentConnector.RequestGameObject() : WorldConnector.WorldRoot;
+			//Transform.SetParent(gameObject.transform, false);
 
-			//if (_lastParent != ParentConnector?.RefId || IsRootSlot)
-			//{
-			//	_lastParent = ParentConnector?.RefId ?? default;
-			//	if (ParentConnector != null)
-			//	{
-			//		//ParentConnector.FreeGameObject();
-			//	}
-			//	GameObject gameObject;
-			//	if (ParentConnector != null)
-			//	{
-			//		gameObject = ParentConnector.RequestGameObject();
-			//	}
-			//	else
-			//	{
-			//		gameObject = WorldConnector.WorldRoot;
-			//	}
-			//	Transform.SetParent(gameObject.transform, worldPositionStays: false);
-			//}
+			var par = GetSlotConnectorById(parentId);
+
+			if (_lastParent != par || IsRootSlot)
+			{
+				_lastParent = par;
+				if (ParentConnector != null)
+				{
+					ParentConnector.FreeGameObject();
+				}
+				GameObject gameObject;
+				if (par != null)
+				{
+					ParentConnector = par;
+					gameObject = ParentConnector.RequestGameObject();
+				}
+				else
+				{
+					gameObject = WorldConnector.WorldRoot;
+				}
+				Transform.SetParent(gameObject.transform, worldPositionStays: false);
+			}
 		}
 
 		public void UpdateLayer()
@@ -132,7 +147,7 @@ namespace Thundagun
 		public bool HasParent;
 		public bool IsRootSlot;
 		public bool Reparent;
-		//public string SlotName;
+		public string SlotName;
 		public long WorldId;
 
 		public void Serialize(CircularBuffer buffer)
@@ -167,6 +182,13 @@ namespace Thundagun
 			buffer.Write(ref Reparent);
 
 			//buffer.Write(ref SlotName);
+
+			string nameToEncode = SlotName;
+			if (SlotName == null)
+			{
+				nameToEncode = "NULL";
+			}
+			buffer.Write(Encoding.UTF8.GetBytes(nameToEncode));
 
 			buffer.Write(ref WorldId);
 		}
@@ -208,6 +230,9 @@ namespace Thundagun
 			buffer.Read(out Reparent);
 
 			//SlotName = br.ReadString();
+			var bytes = new byte[256];
+			buffer.Read(bytes);
+			SlotName = Encoding.UTF8.GetString(bytes);
 
 			buffer.Read(out WorldId);
 		}

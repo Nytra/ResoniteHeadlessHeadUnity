@@ -69,8 +69,8 @@ namespace Thundagun
 				// Display the read text to the console
 				//string temp;
 
-				buffer = new CircularBuffer("MyBuffer");
-				var syncBuffer = new BufferReadWrite("SyncBuffer");
+				buffer = new CircularBuffer("MyBuffer3");
+				var syncBuffer = new BufferReadWrite("SyncBuffer3");
 
 				myLogger.PushMessage("[CLIENT] Buffer opened.");
 
@@ -128,34 +128,44 @@ namespace Thundagun
 											if (generatedGameObject == null)
 												return;
 
-											if (deserializedObject.Reparent)
+											if (world.refIdToSlot.TryGetValue(deserializedObject.ParentRefId, out var parentSlot))
 											{
-												GameObject gameObject;
-
-												if (world.refIdToSlot.TryGetValue(deserializedObject.ParentRefId, out var parentSlot))
+												if (parentSlot != slotConn.ParentConnector)
 												{
-													slotConn.ParentConnector = parentSlot;
-													gameObject = slotConn.ParentConnector.RequestGameObject();
+													slotConn.parentId = deserializedObject.ParentRefId;
+													slotConn.UpdateParent();
 												}
-												else
-												{
-													if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world2))
-													{
-														gameObject = world2.WorldRoot;
-														myLogger.PushMessage("parenting to world root");
-													}
-													else
-													{
-														gameObject = worldsRoot;
-														myLogger.PushMessage("WARNING: parenting to worlds root (NOT world root)!");
-													}
-												}
-
-												slotConn.Transform.SetParent(gameObject.transform, false);
 											}
+
+											//if (deserializedObject.Reparent)
+											//{
+											//	GameObject gameObject;
+
+											//	if (world.refIdToSlot.TryGetValue(deserializedObject.ParentRefId, out var parentSlot))
+											//	{
+											//		slotConn.ParentConnector = parentSlot;
+											//		gameObject = slotConn.ParentConnector.RequestGameObject();
+											//	}
+											//	else
+											//	{
+											//		if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world2))
+											//		{
+											//			gameObject = world2.WorldRoot;
+											//			myLogger.PushMessage("parenting to world root");
+											//		}
+											//		else
+											//		{
+											//			gameObject = worldsRoot;
+											//			myLogger.PushMessage("WARNING: parenting to worlds root (NOT world root)!");
+											//		}
+											//	}
+
+											//	slotConn.Transform.SetParent(gameObject.transform, false);
+											//}
 
 											//slotConn.UpdateLayer();
 											slotConn.SetData();
+											slotConn.GeneratedGameObject.name = deserializedObject.SlotName;
 
 											//UpdateData
 											//GameObject go = slotConn.GeneratedGameObject;
@@ -185,9 +195,11 @@ namespace Thundagun
 											newSc.Scale = deserializedObject.Scale;
 											newSc.RefId = deserializedObject.RefId;
 
+											newSc.parentId = deserializedObject.ParentRefId;
+
 											var go = newSc.RequestGameObject();
-											//go.name = deserializedObject.SlotName;
-											go.name = "Slot";
+											go.name = deserializedObject.SlotName;
+											//go.name = "Slot";
 
 											world2.refIdToSlot.Add(deserializedObject.RefId, newSc);
 											world2.goToSlot.Add(go, newSc);
