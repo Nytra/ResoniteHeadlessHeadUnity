@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.IO;
 using System.Collections.Generic;
+using SharedMemory;
 
 namespace Thundagun
 {
@@ -29,13 +30,13 @@ namespace Thundagun
 	public class InitializeWorldConnector : IUpdatePacket
 	{
 		public long WorldId;
-		public void Serialize(BinaryWriter bw)
+		public void Serialize(CircularBuffer buffer)
 		{
-			bw.Write(WorldId);
+			buffer.Write(ref WorldId);
 		}
-		public void Deserialize(BinaryReader br)
+		public void Deserialize(CircularBuffer buffer)
 		{
-			WorldId = br.ReadInt64();
+			buffer.Read(out WorldId);
 		}
 		public override string ToString()
 		{
@@ -48,15 +49,15 @@ namespace Thundagun
 		public int Focus;
 		public long WorldId;
 
-		public void Serialize(BinaryWriter bw)
+		public void Serialize(CircularBuffer buffer)
 		{
-			bw.Write(Focus);
-			bw.Write(WorldId);
+			buffer.Write(ref Focus);
+			buffer.Write(ref WorldId);
 		}
-		public void Deserialize(BinaryReader br)
+		public void Deserialize(CircularBuffer buffer)
 		{
-			Focus = br.ReadInt32();
-			WorldId = br.ReadInt64();
+			buffer.Read(out Focus);
+			buffer.Read(out WorldId);
 		}
 		public override string ToString()
 		{
@@ -67,13 +68,13 @@ namespace Thundagun
 	public class DestroyWorldConnector : IUpdatePacket
 	{
 		public long WorldId;
-		public void Serialize(BinaryWriter bw)
+		public void Serialize(CircularBuffer buffer)
 		{
-			bw.Write(WorldId);
+			buffer.Write(ref WorldId);
 		}
-		public void Deserialize(BinaryReader br)
+		public void Deserialize(CircularBuffer buffer)
 		{
-			WorldId = br.ReadInt64();
+			buffer.Read(out WorldId);
 		}
 		public override string ToString()
 		{

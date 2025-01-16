@@ -15,6 +15,16 @@ namespace Thundagun
 		public static Dictionary<GameObject, WorldConnector> goToWorld = new();
 	}
 
+	public enum PacketTypes
+	{
+		Sync,
+		ApplyChangesSlot,
+		DestroySlot,
+		InitializeWorld,
+		ChangeFocusWorld,
+		DestroyWorld
+	}
+
 	public class Main : MonoBehaviour
 	{
 		public MyLogger myLogger;
@@ -23,8 +33,9 @@ namespace Thundagun
 		public float moveSpeed;
 		public float camSpeed;
 		private static bool started = false;
-		private static NamedPipeClientStream pipeClient = null;
-		private static BinaryReader br;
+		//private static NamedPipeClientStream pipeClient = null;
+		//private static BinaryReader br;
+		private static CircularBuffer buffer;
 		private static Queue<Action> synchronousActions = new();
 		private static int updates = 0;
 		const bool DEBUG = true; // use when running in the Unity editor, so that the editor doesn't get closed
@@ -47,47 +58,56 @@ namespace Thundagun
 					myLogger.PushMessage(string.Join(',', args));
 				}
 
-				pipeClient = new NamedPipeClientStream(".", "ResoniteHeadlessHead", PipeDirection.In);
+				//pipeClient = new NamedPipeClientStream(".", "ResoniteHeadlessHead", PipeDirection.In);
 
-				pipeClient.Connect();
+				//pipeClient.Connect();
 
-				myLogger.PushMessage("[CLIENT] Current TransmissionMode: " + pipeClient.TransmissionMode.ToString());
+				//myLogger.PushMessage("[CLIENT] Current TransmissionMode: " + pipeClient.TransmissionMode.ToString());
 
-				br = new BinaryReader(pipeClient);
+				//br = new BinaryReader(pipeClient);
 
 				// Display the read text to the console
-				string temp;
+				//string temp;
+
+				buffer = new CircularBuffer("MyBuffer");
+				var syncBuffer = new BufferReadWrite("SyncBuffer");
+
+				myLogger.PushMessage("[CLIENT] Buffer opened.");
 
 				// Wait for 'sync message' from the server.
+				int num = 999;
+
+				myLogger.PushMessage("[CLIENT] Wait for sync...");
+
 				do
 				{
-					myLogger.PushMessage("[CLIENT] Wait for sync...");
-					temp = br.ReadString();
+					syncBuffer.Read(out num);
 				}
-				while (!temp.StartsWith("SYNC"));
+				while (num != 999);
 
-				var thing = new SharedMemory.SharedArray<int>("TestArray");
-				myLogger.PushMessage(thing[0].ToString());
-				myLogger.PushMessage(thing[1].ToString());
-				myLogger.PushMessage(thing[2].ToString());
+				buffer.Write(ref num);
+
+				num = 0;
 
 				myLogger.PushMessage("[CLIENT] synced.");
+
+				myLogger.PushMessage("[CLIENT] Starting message loop.");
 
 				Task.Run(async () =>
 				{
 					while (true)
 					{
-						var temp = br.ReadString();
-						if (temp != null)
+						buffer.Read(out num);
+						if (num != 0)
 						{
-							RunSynchronously(() => 
-							{ 
-								myLogger.PushMessage(temp);
-							});
-							if (temp == "ApplyChangesSlotConnector")
+							//RunSynchronously(() =>
+							//{ 
+							//	myLogger.PushMessage(num.ToString());
+							//});
+							if (num == (int)PacketTypes.ApplyChangesSlot)
 							{
 								ApplyChangesSlotConnector deserializedObject = new();
-								deserializedObject.Deserialize(br);
+								deserializedObject.Deserialize(buffer);
 
 								RunSynchronously(() =>
 								{
@@ -100,7 +120,7 @@ namespace Thundagun
 											slotConn.IsRootSlot = deserializedObject.IsRootSlot;
 											slotConn.Active = deserializedObject.Active;
 											slotConn.Position = deserializedObject.Position;
-											slotConn.Rotation = Quaternion.Euler(deserializedObject.Rotation);
+											slotConn.Rotation = deserializedObject.Rotation;
 											slotConn.Scale = deserializedObject.Scale;
 											slotConn.RefId = deserializedObject.RefId;
 
@@ -161,12 +181,13 @@ namespace Thundagun
 											newSc.IsRootSlot = deserializedObject.IsRootSlot;
 											newSc.Active = deserializedObject.Active;
 											newSc.Position = deserializedObject.Position;
-											newSc.Rotation = Quaternion.Euler(deserializedObject.Rotation);
+											newSc.Rotation = deserializedObject.Rotation;
 											newSc.Scale = deserializedObject.Scale;
 											newSc.RefId = deserializedObject.RefId;
 
 											var go = newSc.RequestGameObject();
-											go.name = deserializedObject.SlotName;
+											//go.name = deserializedObject.SlotName;
+											go.name = "Slot";
 
 											world2.refIdToSlot.Add(deserializedObject.RefId, newSc);
 											world2.goToSlot.Add(go, newSc);
@@ -182,10 +203,10 @@ namespace Thundagun
 									//UpdateParent(go, deserializedObject);
 								});
 							}
-							else if (temp == "InitializeWorldConnector")
+							else if (num == (int)PacketTypes.InitializeWorld)
 							{
 								InitializeWorldConnector deserializedObject = new();
-								deserializedObject.Deserialize(br);
+								deserializedObject.Deserialize(buffer);
 
 								RunSynchronously(() =>
 								{
@@ -202,10 +223,10 @@ namespace Thundagun
 									WorldManager.goToWorld.Add(world.WorldRoot, world);
 								});
 							}
-							else if (temp == "DestroySlotConnector")
+							else if (num == (int)PacketTypes.DestroySlot)
 							{
 								DestroySlotConnector deserializedObject = new();
-								deserializedObject.Deserialize(br);
+								deserializedObject.Deserialize(buffer);
 
 								RunSynchronously(() =>
 								{
@@ -234,10 +255,10 @@ namespace Thundagun
 									}
 								});
 							}
-							else if (temp == "ChangeFocusWorldConnector")
+							else if (num == (int)PacketTypes.ChangeFocusWorld)
 							{
 								ChangeFocusWorldConnector deserializedObject = new();
-								deserializedObject.Deserialize(br);
+								deserializedObject.Deserialize(buffer);
 
 								RunSynchronously(() =>
 								{
@@ -266,10 +287,10 @@ namespace Thundagun
 									}
 								});
 							}
-							else if (temp == "DestroyWorldConnector")
+							else if (num == (int)PacketTypes.DestroyWorld)
 							{
 								DestroyWorldConnector deserializedObject = new();
-								deserializedObject.Deserialize(br);
+								deserializedObject.Deserialize(buffer);
 
 								if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world))
 								{
@@ -278,16 +299,16 @@ namespace Thundagun
 								}
 							}
 						}
-						updates++;
-						if (updates > 10)
-						{
-							updates = 0;
-							await Task.Delay(TimeSpan.FromMilliseconds(1));
-						}
+						//updates++;
+						//if (updates > 25)
+						//{
+						//	updates = 0;
+						//	await Task.Delay(TimeSpan.FromMilliseconds(1));
+						//}
 					}
 				});
 			}
-			if (started && pipeClient != null && !pipeClient.IsConnected && !DEBUG)
+			if (started && buffer != null && buffer.ShuttingDown && !DEBUG)
 			{
 				Process.GetCurrentProcess().Kill();
 			}

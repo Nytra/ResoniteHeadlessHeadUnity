@@ -1,3 +1,4 @@
+using SharedMemory;
 using System.IO;
 using UnityEngine;
 
@@ -122,7 +123,7 @@ namespace Thundagun
 		public bool ActiveChanged;
 		public Vector3 Position;
 		public bool PositionChanged;
-		public Vector3 Rotation;
+		public Quaternion Rotation;
 		public bool RotationChanged;
 		public Vector3 Scale;
 		public bool ScaleChanged;
@@ -131,83 +132,89 @@ namespace Thundagun
 		public bool HasParent;
 		public bool IsRootSlot;
 		public bool Reparent;
-		public string SlotName;
+		//public string SlotName;
 		public long WorldId;
 
-		public void Serialize(BinaryWriter bw)
+		public void Serialize(CircularBuffer buffer)
 		{
-			bw.Write(Active);
-			bw.Write(ActiveChanged);
+			buffer.Write(ref Active);
+			buffer.Write(ref ActiveChanged);
 
-			bw.Write(Position.x);
-			bw.Write(Position.y);
-			bw.Write(Position.z);
-			bw.Write(PositionChanged);
+			buffer.Write(ref Position.x);
+			buffer.Write(ref Position.y);
+			buffer.Write(ref Position.z);
+			buffer.Write(ref PositionChanged);
 
-			bw.Write(Rotation.x);
-			bw.Write(Rotation.y);
-			bw.Write(Rotation.z);
-			bw.Write(RotationChanged);
+			buffer.Write(ref Rotation.x);
+			buffer.Write(ref Rotation.y);
+			buffer.Write(ref Rotation.z);
+			buffer.Write(ref Rotation.w);
+			buffer.Write(ref RotationChanged);
 
-			bw.Write(Scale.x);
-			bw.Write(Scale.y);
-			bw.Write(Scale.z);
-			bw.Write(ScaleChanged);
+			buffer.Write(ref Scale.x);
+			buffer.Write(ref Scale.y);
+			buffer.Write(ref Scale.z);
+			buffer.Write(ref ScaleChanged);
 
-			bw.Write(RefId);
+			buffer.Write(ref RefId);
 
-			bw.Write(ParentRefId);
+			buffer.Write(ref ParentRefId);
 
-			bw.Write(HasParent);
+			buffer.Write(ref HasParent);
 
-			bw.Write(IsRootSlot);
+			buffer.Write(ref IsRootSlot);
 
-			bw.Write(Reparent);
+			buffer.Write(ref Reparent);
 
-			bw.Write(SlotName);
+			//buffer.Write(ref SlotName);
 
-			bw.Write(WorldId);
+			buffer.Write(ref WorldId);
 		}
-		public void Deserialize(BinaryReader br)
+		public void Deserialize(CircularBuffer buffer)
 		{
-			Active = br.ReadBoolean();
-			ActiveChanged = br.ReadBoolean();
+			buffer.Read(out Active);
+			buffer.Read(out ActiveChanged);
 
-			float px = br.ReadSingle();
-			float py = br.ReadSingle();
-			float pz = br.ReadSingle();
+			float px, py, pz;
+			buffer.Read(out px);
+			buffer.Read(out py);
+			buffer.Read(out pz);
 			Position = new Vector3(px, py, pz);
-			PositionChanged = br.ReadBoolean();
+			buffer.Read(out PositionChanged);
 
-			float rx = br.ReadSingle();
-			float ry = br.ReadSingle();
-			float yz = br.ReadSingle();
-			Rotation = new Vector3(rx, ry, yz);
-			RotationChanged = br.ReadBoolean();
+			float rx, ry, rz, rw;
+			buffer.Read(out rx);
+			buffer.Read(out ry);
+			buffer.Read(out rz);
+			buffer.Read(out rw);
+			Rotation = new Quaternion(rx, ry, rz, rw);
+			buffer.Read(out RotationChanged);
 
-			float sx = br.ReadSingle();
-			float sy = br.ReadSingle();
-			float sz = br.ReadSingle();
+			float sx, sy, sz;
+			buffer.Read(out sx);
+			buffer.Read(out sy);
+			buffer.Read(out sz);
 			Scale = new Vector3(sx, sy, sz);
-			ScaleChanged = br.ReadBoolean();
+			buffer.Read(out ScaleChanged);
 
-			RefId = br.ReadUInt64();
+			buffer.Read(out RefId);
 
-			ParentRefId = br.ReadUInt64();
+			buffer.Read(out ParentRefId);
 
-			HasParent = br.ReadBoolean();
+			buffer.Read(out HasParent);
 
-			IsRootSlot = br.ReadBoolean();
+			buffer.Read(out IsRootSlot);
 
-			Reparent = br.ReadBoolean();
+			buffer.Read(out Reparent);
 
-			SlotName = br.ReadString();
+			//SlotName = br.ReadString();
 
-			WorldId = br.ReadInt64();
+			buffer.Read(out WorldId);
 		}
+
 		public override string ToString()
 		{
-			return $"ApplyChangesSlotConnector: {Active} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} {SlotName} {WorldId}";
+			return $"ApplyChangesSlotConnector: {Active} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} {WorldId}";
 		}
 	}
 
@@ -217,17 +224,17 @@ namespace Thundagun
 		public bool DestroyingWorld;
 		public long WorldId;
 
-		public void Serialize(BinaryWriter bw)
+		public void Serialize(CircularBuffer buffer)
 		{
-			bw.Write(RefID);
-			bw.Write(DestroyingWorld);
-			bw.Write(WorldId);
+			buffer.Write(ref RefID);
+			buffer.Write(ref DestroyingWorld);
+			buffer.Write(ref WorldId);
 		}
-		public void Deserialize(BinaryReader br)
+		public void Deserialize(CircularBuffer buffer)
 		{
-			RefID = br.ReadUInt64();
-			DestroyingWorld = br.ReadBoolean();
-			WorldId = br.ReadInt64();
+			buffer.Read(out RefID);
+			buffer.Read(out DestroyingWorld);
+			buffer.Read(out WorldId);
 		}
 		public override string ToString()
 		{
