@@ -3,6 +3,10 @@ using System.IO;
 using UnityEngine;
 using System.Text;
 using UnityEditor;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using System.Linq;
+using TMPro;
 
 namespace Thundagun
 {
@@ -63,7 +67,9 @@ namespace Thundagun
 
 		private void GenerateGameObject()
 		{
-			GeneratedGameObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+			//GeneratedGameObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+			GeneratedGameObject = GameObject.Instantiate(SceneManager.GetActiveScene().GetRootGameObjects().FirstOrDefault(go => go.name == "Cube"));
+			GeneratedGameObject.SetActive(true);
 			Transform = GeneratedGameObject.transform;
 			UpdateParent();
 			//UpdateLayer();
@@ -72,9 +78,9 @@ namespace Thundagun
 
 		private SlotConnector GetSlotConnectorById(ulong id)
 		{
-			if (WorldConnector.refIdToSlot.TryGetValue(id, out var parentSlot))
+			if (WorldConnector.refIdToSlot.TryGetValue(id, out var slotConn))
 			{
-				return parentSlot;
+				return slotConn;
 			}
 			return null;
 		}
@@ -91,7 +97,7 @@ namespace Thundagun
 				_lastParent = par;
 				if (ParentConnector != null)
 				{
-					ParentConnector.FreeGameObject();
+					//ParentConnector.FreeGameObject();
 				}
 				GameObject gameObject;
 				if (par != null)
@@ -149,6 +155,9 @@ namespace Thundagun
 		public bool Reparent;
 		public string SlotName;
 		public long WorldId;
+		public bool IsUserRootSlot;
+		public bool HasActiveUser;
+		public bool ShouldRender;
 
 		public void Serialize(CircularBuffer buffer)
 		{
@@ -191,6 +200,12 @@ namespace Thundagun
 			buffer.Write(Encoding.UTF8.GetBytes(nameToEncode));
 
 			buffer.Write(ref WorldId);
+
+			buffer.Write(ref IsUserRootSlot);
+
+			buffer.Write(ref HasActiveUser);
+
+			buffer.Write(ref ShouldRender);
 		}
 		public void Deserialize(CircularBuffer buffer)
 		{
@@ -230,16 +245,22 @@ namespace Thundagun
 			buffer.Read(out Reparent);
 
 			//SlotName = br.ReadString();
-			var bytes = new byte[256];
+			var bytes = new byte[64];
 			buffer.Read(bytes);
-			SlotName = Encoding.UTF8.GetString(bytes);
+			SlotName = Encoding.UTF8.GetString(bytes).Trim();
 
 			buffer.Read(out WorldId);
+
+			buffer.Read(out IsUserRootSlot);
+
+			buffer.Read(out HasActiveUser);
+
+			buffer.Read(out ShouldRender);
 		}
 
 		public override string ToString()
 		{
-			return $"ApplyChangesSlotConnector: {Active} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} {WorldId}";
+			return $"ApplyChangesSlotConnector: {Active} {ActiveChanged} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} SlotName {WorldId} {IsUserRootSlot} {HasActiveUser} {ShouldRender}";
 		}
 	}
 

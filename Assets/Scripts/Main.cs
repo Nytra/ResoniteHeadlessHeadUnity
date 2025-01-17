@@ -6,6 +6,8 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Collections.Generic;
 using SharedMemory;
+using UnityEngine.UI;
+using TMPro;
 
 namespace Thundagun
 {
@@ -33,8 +35,6 @@ namespace Thundagun
 		public float moveSpeed;
 		public float camSpeed;
 		private static bool started = false;
-		//private static NamedPipeClientStream pipeClient = null;
-		//private static BinaryReader br;
 		private static CircularBuffer buffer;
 		private static Queue<Action> synchronousActions = new();
 		private static int updates = 0;
@@ -58,33 +58,26 @@ namespace Thundagun
 					myLogger.PushMessage(string.Join(',', args));
 				}
 
-				//pipeClient = new NamedPipeClientStream(".", "ResoniteHeadlessHead", PipeDirection.In);
-
-				//pipeClient.Connect();
-
-				//myLogger.PushMessage("[CLIENT] Current TransmissionMode: " + pipeClient.TransmissionMode.ToString());
-
-				//br = new BinaryReader(pipeClient);
-
-				// Display the read text to the console
-				//string temp;
-
-				buffer = new CircularBuffer("MyBuffer3");
-				var syncBuffer = new BufferReadWrite("SyncBuffer3");
+				var syncBuffer = new BufferReadWrite("SyncBuffer");
 
 				myLogger.PushMessage("[CLIENT] Buffer opened.");
 
 				// Wait for 'sync message' from the server.
-				int num = 999;
+				int num;
 
 				myLogger.PushMessage("[CLIENT] Wait for sync...");
 
-				do
-				{
-					syncBuffer.Read(out num);
-				}
-				while (num != 999);
+				//do
+				//{
+				//	syncBuffer.Read(out num);
+				//}
+				//while (num != 999);
 
+				syncBuffer.Read(out num);
+
+				myLogger.PushMessage($"[CLIENT] Got id {num} from sync buffer.");
+
+				buffer = new CircularBuffer($"MyBuffer{num}");
 				buffer.Write(ref num);
 
 				num = 0;
@@ -111,7 +104,7 @@ namespace Thundagun
 
 								RunSynchronously(() =>
 								{
-									myLogger.PushMessage(deserializedObject.ToString());
+									//myLogger.PushMessage(deserializedObject.ToString());
 
 									if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world))
 									{
@@ -167,6 +160,20 @@ namespace Thundagun
 											slotConn.SetData();
 											slotConn.GeneratedGameObject.name = deserializedObject.SlotName;
 
+											if (deserializedObject.IsUserRootSlot)
+											{
+												var text = slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>();
+												text.text = deserializedObject.SlotName;
+												text.gameObject.GetComponent<MeshRenderer>().material.renderQueue = 4000;
+											}
+
+											if (deserializedObject.HasActiveUser)
+												slotConn.GeneratedGameObject.GetComponent<MeshRenderer>().material.color = Color.green;
+											else
+												slotConn.GeneratedGameObject.GetComponent<MeshRenderer>().material.color = Color.white;
+
+											slotConn.GeneratedGameObject.GetComponent<MeshRenderer>().enabled = deserializedObject.ShouldRender && deserializedObject.Active;
+
 											//UpdateData
 											//GameObject go = slotConn.GeneratedGameObject;
 											//if (deserializedObject.ActiveChanged) go.SetActive(deserializedObject.Active);
@@ -199,7 +206,17 @@ namespace Thundagun
 
 											var go = newSc.RequestGameObject();
 											go.name = deserializedObject.SlotName;
-											//go.name = "Slot";
+											if (deserializedObject.IsUserRootSlot)
+											{
+												var text = go.GetComponentInChildren<TextMeshPro>();
+												text.text = deserializedObject.SlotName;
+												text.gameObject.GetComponent<MeshRenderer>().material.renderQueue = 4000;
+											}
+
+											if (deserializedObject.HasActiveUser)
+												go.GetComponent<MeshRenderer>().material.color = Color.green;
+
+											go.GetComponent<MeshRenderer>().enabled = deserializedObject.ShouldRender && deserializedObject.Active;
 
 											world2.refIdToSlot.Add(deserializedObject.RefId, newSc);
 											world2.goToSlot.Add(go, newSc);
@@ -242,7 +259,7 @@ namespace Thundagun
 
 								RunSynchronously(() =>
 								{
-									myLogger.PushMessage(deserializedObject.ToString());
+									//myLogger.PushMessage(deserializedObject.ToString());
 									if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world))
 									{
 										if (world.refIdToSlot.TryGetValue(deserializedObject.RefID, out var slot))
@@ -356,10 +373,15 @@ namespace Thundagun
 			if (synchronousActions.Count > 0)
 			{
 				Queue<Action> actions = new();
+				//int count = Math.Min(synchronousActions.Count, (int)(1f / Time.deltaTime) * 30);
+				int count = synchronousActions.Count;
 				lock (synchronousActions)
 				{
-					actions = new Queue<Action>(synchronousActions);
-					synchronousActions.Clear();
+					actions = new Queue<Action>(count);
+					for (int i = 0; i < count; i++)
+					{
+						actions.Enqueue(synchronousActions.Dequeue());
+					}
 				}
 				while (actions.Count > 0)
 				{
@@ -370,7 +392,7 @@ namespace Thundagun
 					}
 					catch (Exception ex)
 					{
-						myLogger.PushMessage(ex.ToString());
+						myLogger.PushMessage(ex.ToString(), debug: true);
 					}
 				}
 			}

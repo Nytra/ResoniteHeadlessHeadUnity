@@ -1,15 +1,16 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class MyLogger : MonoBehaviour
 {
     public TextMeshProUGUI uiText;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    public void PushMessage(string message)
+    public void PushMessage(string message, bool debug=false)
     {
-        Debug.Log(message);
+        if (debug) Debug.Log(message);
         if (message == null) return;
-		if (uiText.text.Length > 5000)
+		if (uiText.text.Length > 10000)
 		{
             uiText.text = uiText.text.Remove(0, 2500);
 		}
