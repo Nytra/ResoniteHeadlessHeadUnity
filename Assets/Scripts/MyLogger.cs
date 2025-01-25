@@ -5,10 +5,12 @@ using UnityEngine.UIElements;
 public class MyLogger : MonoBehaviour
 {
     public TextMeshProUGUI uiText;
+    public static MyLogger instance;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    public void PushMessage(string message, bool debug=false)
+    public void PushMessage(string message)
     {
-        if (debug) Debug.Log(message);
+        
+        Debug.Log(message);
         if (message == null) return;
 		if (uiText.text.Length > 10000)
 		{
@@ -18,7 +20,8 @@ public class MyLogger : MonoBehaviour
     }
     void Start()
     {
-    }
+		instance = this;
+	}
 
     // Update is called once per frame
     void Update()

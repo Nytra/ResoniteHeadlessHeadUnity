@@ -26,6 +26,7 @@ namespace Thundagun
 		private SlotConnector _lastParent;
 		public bool IsRootSlot;
 		public ulong parentId;
+		public bool ForceRender;
 
 		public GameObject GeneratedGameObject { get; private set; }
 
@@ -44,26 +45,26 @@ namespace Thundagun
 			return ForceGetGameObject();
 		}
 
-		public void FreeGameObject()
-		{
-			GameObjectRequests--;
-			TryDestroy();
-		}
+		//public void FreeGameObject()
+		//{
+		//	GameObjectRequests--;
+		//	TryDestroy();
+		//}
 
-		public void TryDestroy(bool destroyingWorld = false)
-		{
-			if (!ShouldDestroy || GameObjectRequests != 0)
-				return;
-			if (!destroyingWorld)
-			{
-				if (GeneratedGameObject != null) UnityEngine.Object.Destroy(GeneratedGameObject);
-				ParentConnector?.FreeGameObject();
-			}
+		//public void TryDestroy(bool destroyingWorld = false)
+		//{
+		//	if (!ShouldDestroy || GameObjectRequests != 0)
+		//		return;
+		//	if (!destroyingWorld)
+		//	{
+		//		if (GeneratedGameObject != null) UnityEngine.Object.Destroy(GeneratedGameObject);
+		//		ParentConnector?.FreeGameObject();
+		//	}
 
-			GeneratedGameObject = null;
-			Transform = null;
-			ParentConnector = null;
-		}
+		//	GeneratedGameObject = null;
+		//	Transform = null;
+		//	ParentConnector = null;
+		//}
 
 		private void GenerateGameObject()
 		{
@@ -95,9 +96,18 @@ namespace Thundagun
 			if (_lastParent != par || IsRootSlot)
 			{
 				_lastParent = par;
-				if (ParentConnector != null)
+				if (ParentConnector != null && ParentConnector.GeneratedGameObject != null)
 				{
 					//ParentConnector.FreeGameObject();
+
+					// this might not be needed?
+					//if (ParentConnector.GeneratedGameObject.transform.childCount == 2)
+					//{
+					//	ParentConnector.ShouldDestroy = true;
+					//	ParentConnector.WorldConnector.refIdToSlot.Remove(ParentConnector.RefId);
+					//	ParentConnector.WorldConnector.goToSlot.Remove(ParentConnector.GeneratedGameObject);
+					//	UnityEngine.Object.Destroy(ParentConnector.GeneratedGameObject);
+					//}
 				}
 				GameObject gameObject;
 				if (par != null)
@@ -113,6 +123,7 @@ namespace Thundagun
 			}
 		}
 
+		// Update layer currently does not work!
 		public void UpdateLayer()
 		{
 			var layer = ForceLayer <= 0 ? Transform.parent.gameObject.layer : ForceLayer;
@@ -124,8 +135,14 @@ namespace Thundagun
 		public static void SetHiearchyLayer(GameObject root, int layer)
 		{
 			root.layer = layer;
-			for (var index = 0; index < root.transform.childCount; ++index)
+			for (var index = 0; index < root.transform.childCount; index++)
 				SetHiearchyLayer(root.transform.GetChild(index).gameObject, layer);
+		}
+
+		private static void SetGlobalScale(Transform transform, Vector3 globalScale)
+		{
+			transform.localScale = Vector3.one;
+			transform.localScale = new Vector3(globalScale.x / transform.lossyScale.x, globalScale.y / transform.lossyScale.y, globalScale.z / transform.lossyScale.z);
 		}
 
 		public void SetData()
@@ -135,6 +152,7 @@ namespace Thundagun
 			transform.localPosition = Position;
 			transform.localRotation = Rotation;
 			transform.localScale = Scale;
+			SetGlobalScale(GeneratedGameObject.GetComponentInChildren<MeshRenderer>().gameObject.transform, Vector3.one * 0.25f);
 		}
 	}
 
@@ -158,6 +176,7 @@ namespace Thundagun
 		public bool IsUserRootSlot;
 		public bool HasActiveUser;
 		public bool ShouldRender;
+		public bool ForceRender;
 
 		public void Serialize(CircularBuffer buffer)
 		{
@@ -190,14 +209,7 @@ namespace Thundagun
 
 			buffer.Write(ref Reparent);
 
-			//buffer.Write(ref SlotName);
-
-			string nameToEncode = SlotName;
-			if (SlotName == null)
-			{
-				nameToEncode = "NULL";
-			}
-			buffer.Write(Encoding.UTF8.GetBytes(nameToEncode));
+			buffer.Write(Encoding.UTF8.GetBytes(SlotName ?? "NULL"));
 
 			buffer.Write(ref WorldId);
 
@@ -206,6 +218,8 @@ namespace Thundagun
 			buffer.Write(ref HasActiveUser);
 
 			buffer.Write(ref ShouldRender);
+
+			buffer.Write(ref ForceRender);
 		}
 		public void Deserialize(CircularBuffer buffer)
 		{
@@ -244,8 +258,7 @@ namespace Thundagun
 
 			buffer.Read(out Reparent);
 
-			//SlotName = br.ReadString();
-			var bytes = new byte[64];
+			var bytes = new byte[128];
 			buffer.Read(bytes);
 			SlotName = Encoding.UTF8.GetString(bytes).Trim();
 
@@ -256,11 +269,13 @@ namespace Thundagun
 			buffer.Read(out HasActiveUser);
 
 			buffer.Read(out ShouldRender);
+
+			buffer.Read(out ForceRender);
 		}
 
 		public override string ToString()
 		{
-			return $"ApplyChangesSlotConnector: {Active} {ActiveChanged} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} SlotName {WorldId} {IsUserRootSlot} {HasActiveUser} {ShouldRender}";
+			return $"ApplyChangesSlotConnector: {Active} {ActiveChanged} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} SlotName {WorldId} {IsUserRootSlot} {HasActiveUser} {ShouldRender} {ForceRender}";
 		}
 	}
 

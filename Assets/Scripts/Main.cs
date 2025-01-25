@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using SharedMemory;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.Animations;
 
 namespace Thundagun
 {
@@ -37,7 +38,7 @@ namespace Thundagun
 		private static bool started = false;
 		private static CircularBuffer buffer;
 		private static Queue<Action> synchronousActions = new();
-		private static int updates = 0;
+		//private static int updates = 0;
 		const bool DEBUG = true; // use when running in the Unity editor, so that the editor doesn't get closed
 
 		// Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -59,38 +60,41 @@ namespace Thundagun
 				}
 
 				var syncBuffer = new BufferReadWrite("SyncBuffer");
+				var returnBuffer = new CircularBuffer("ReturnBuffer");
 
-				myLogger.PushMessage("[CLIENT] Buffer opened.");
+				myLogger.PushMessage("SyncBuffer opened.");
 
-				// Wait for 'sync message' from the server.
 				int num;
 
-				myLogger.PushMessage("[CLIENT] Wait for sync...");
-
-				//do
-				//{
-				//	syncBuffer.Read(out num);
-				//}
-				//while (num != 999);
+				myLogger.PushMessage("Waiting for SyncBuffer message...");
 
 				syncBuffer.Read(out num);
 
-				myLogger.PushMessage($"[CLIENT] Got id {num} from sync buffer.");
+				myLogger.PushMessage($"Got id {num} from SyncBuffer.");
 
 				buffer = new CircularBuffer($"MyBuffer{num}");
-				buffer.Write(ref num);
+				
+				myLogger.PushMessage($"MyBuffer{num} opened.");
+
+				myLogger.PushMessage($"Returning id {num}.");
+
+				returnBuffer.Write(ref num);
+
+				myLogger.PushMessage("Starting message loop!!!");
 
 				num = 0;
 
-				myLogger.PushMessage("[CLIENT] synced.");
-
-				myLogger.PushMessage("[CLIENT] Starting message loop.");
-
 				Task.Run(async () =>
 				{
+					//while (buffer.NodeCount > 0)
+					//{
+					//	var bytes = new byte[128];
+					//	buffer.Read(bytes);
+					//}
 					while (true)
 					{
 						buffer.Read(out num);
+
 						if (num != 0)
 						{
 							//RunSynchronously(() =>
@@ -117,6 +121,9 @@ namespace Thundagun
 											slotConn.Scale = deserializedObject.Scale;
 											slotConn.RefId = deserializedObject.RefId;
 
+											if (deserializedObject.ForceRender)
+												slotConn.ForceRender = true;
+
 											var generatedGameObject = slotConn.GeneratedGameObject;
 											if (generatedGameObject == null)
 												return;
@@ -130,56 +137,35 @@ namespace Thundagun
 												}
 											}
 
-											//if (deserializedObject.Reparent)
-											//{
-											//	GameObject gameObject;
-
-											//	if (world.refIdToSlot.TryGetValue(deserializedObject.ParentRefId, out var parentSlot))
-											//	{
-											//		slotConn.ParentConnector = parentSlot;
-											//		gameObject = slotConn.ParentConnector.RequestGameObject();
-											//	}
-											//	else
-											//	{
-											//		if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world2))
-											//		{
-											//			gameObject = world2.WorldRoot;
-											//			myLogger.PushMessage("parenting to world root");
-											//		}
-											//		else
-											//		{
-											//			gameObject = worldsRoot;
-											//			myLogger.PushMessage("WARNING: parenting to worlds root (NOT world root)!");
-											//		}
-											//	}
-
-											//	slotConn.Transform.SetParent(gameObject.transform, false);
-											//}
-
 											//slotConn.UpdateLayer();
 											slotConn.SetData();
 											slotConn.GeneratedGameObject.name = deserializedObject.SlotName;
 
-											if (deserializedObject.IsUserRootSlot)
+											var text = slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>();
+											if ((deserializedObject.ShouldRender || slotConn.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
 											{
-												var text = slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>();
+												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = true;
 												text.text = deserializedObject.SlotName;
-												text.gameObject.GetComponent<MeshRenderer>().material.renderQueue = 4000;
+											}
+											else
+											{
+												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = false;
+												text.text = "";
 											}
 
 											if (deserializedObject.HasActiveUser)
-												slotConn.GeneratedGameObject.GetComponent<MeshRenderer>().material.color = Color.green;
+											{
+												slotConn.GeneratedGameObject.GetComponentInChildren<MeshRenderer>().material.color = Color.green;
+												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>().color = Color.green;
+											}
 											else
-												slotConn.GeneratedGameObject.GetComponent<MeshRenderer>().material.color = Color.white;
+											{
+												slotConn.GeneratedGameObject.GetComponentInChildren<MeshRenderer>().material.color = Color.white;
+												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>().color = Color.white;
+											}
+												
 
-											slotConn.GeneratedGameObject.GetComponent<MeshRenderer>().enabled = deserializedObject.ShouldRender && deserializedObject.Active;
-
-											//UpdateData
-											//GameObject go = slotConn.GeneratedGameObject;
-											//if (deserializedObject.ActiveChanged) go.SetActive(deserializedObject.Active);
-											//if (deserializedObject.PositionChanged) go.transform.position = deserializedObject.Position;
-											//if (deserializedObject.RotationChanged) go.transform.rotation = Quaternion.Euler(deserializedObject.Rotation);
-											//if (deserializedObject.ScaleChanged) go.transform.localScale = deserializedObject.Scale;
+											slotConn.GeneratedGameObject.GetComponentInChildren<MeshRenderer>().enabled = (deserializedObject.IsUserRootSlot) && deserializedObject.Active;
 										}
 										else
 										{
@@ -204,19 +190,31 @@ namespace Thundagun
 
 											newSc.parentId = deserializedObject.ParentRefId;
 
+											if (deserializedObject.ForceRender)
+												newSc.ForceRender = true;
+
 											var go = newSc.RequestGameObject();
 											go.name = deserializedObject.SlotName;
-											if (deserializedObject.IsUserRootSlot)
+
+											var text = go.GetComponentInChildren<TextMeshPro>();
+											if ((deserializedObject.ShouldRender || newSc.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
 											{
-												var text = go.GetComponentInChildren<TextMeshPro>();
+												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = true;
 												text.text = deserializedObject.SlotName;
-												text.gameObject.GetComponent<MeshRenderer>().material.renderQueue = 4000;
+											}
+											else
+											{
+												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = false;
+												text.text = "";
 											}
 
 											if (deserializedObject.HasActiveUser)
-												go.GetComponent<MeshRenderer>().material.color = Color.green;
+											{
+												go.GetComponentInChildren<MeshRenderer>().material.color = Color.green;
+												go.GetComponentInChildren<TextMeshPro>().color = Color.green;
+											}
 
-											go.GetComponent<MeshRenderer>().enabled = deserializedObject.ShouldRender && deserializedObject.Active;
+											go.GetComponentInChildren<MeshRenderer>().enabled = (deserializedObject.IsUserRootSlot) && deserializedObject.Active;
 
 											world2.refIdToSlot.Add(deserializedObject.RefId, newSc);
 											world2.goToSlot.Add(go, newSc);
@@ -226,10 +224,6 @@ namespace Thundagun
 									{
 										myLogger.PushMessage("No world in ApplyChangesSlotConnector!");
 									}
-
-									//GameObject go;
-									//go = RequestGameObject(deserializedObject);
-									//UpdateParent(go, deserializedObject);
 								});
 							}
 							else if (num == (int)PacketTypes.InitializeWorld)
@@ -280,6 +274,7 @@ namespace Thundagun
 									}
 									else
 									{
+										// This kind of gets hit a lot
 										myLogger.PushMessage("No world in DestroySlotConnector!");
 									}
 								});
@@ -392,12 +387,13 @@ namespace Thundagun
 					}
 					catch (Exception ex)
 					{
-						myLogger.PushMessage(ex.ToString(), debug: true);
+						myLogger.PushMessage(ex.ToString());
 					}
 				}
 			}
 		}
 
+		// Supposedly this is better for input handling because it runs at a constant time interval, but last I tried it was icky...
 		private void FixedUpdate()
 		{
 		}

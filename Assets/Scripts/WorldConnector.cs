@@ -22,7 +22,7 @@ namespace Thundagun
 		public static void SetLayerRecursively(Transform transform, int layer)
 		{
 			transform.gameObject.layer = layer;
-			for (var index = 0; index < transform.childCount; ++index)
+			for (var index = 0; index < transform.childCount; index++)
 				SetLayerRecursively(transform.GetChild(index), layer);
 		}
 	}
