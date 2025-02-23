@@ -7,6 +7,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using TMPro;
+using System.Collections.Generic;
 
 namespace Thundagun
 {
@@ -27,6 +28,8 @@ namespace Thundagun
 		public bool IsRootSlot;
 		public ulong parentId;
 		public bool ForceRender;
+
+		public List<MeshRendererConnector> Meshes = new();
 
 		public GameObject GeneratedGameObject { get; private set; }
 
@@ -152,7 +155,7 @@ namespace Thundagun
 			transform.localPosition = Position;
 			transform.localRotation = Rotation;
 			transform.localScale = Scale;
-			SetGlobalScale(GeneratedGameObject.GetComponentInChildren<MeshRenderer>().gameObject.transform, Vector3.one * 0.25f);
+			//SetGlobalScale(GeneratedGameObject.GetComponentInChildren<MeshRenderer>().gameObject.transform, Vector3.one * 0.25f);
 		}
 	}
 

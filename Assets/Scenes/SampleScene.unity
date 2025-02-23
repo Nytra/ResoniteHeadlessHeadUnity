@@ -389,6 +389,7 @@ MonoBehaviour:
   myLogger: {fileID: 782628376}
   worldsRoot: {fileID: 1114040580}
   camera1: {fileID: 963194225}
+  DefaultMat: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   moveSpeed: 10
   camSpeed: 2.5
 --- !u!4 &223974228

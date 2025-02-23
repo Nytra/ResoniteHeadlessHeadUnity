@@ -9,6 +9,7 @@ using SharedMemory;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.Animations;
+using Unity.VisualScripting;
 
 namespace Thundagun
 {
@@ -25,7 +26,9 @@ namespace Thundagun
 		DestroySlot,
 		InitializeWorld,
 		ChangeFocusWorld,
-		DestroyWorld
+		DestroyWorld,
+		ApplyChangesMeshRenderer,
+		DestroyMeshRenderer
 	}
 
 	public class Main : MonoBehaviour
@@ -33,6 +36,7 @@ namespace Thundagun
 		public MyLogger myLogger;
 		public GameObject worldsRoot;
 		public GameObject camera1;
+		public Material DefaultMat;
 		public float moveSpeed;
 		public float camSpeed;
 		private static bool started = false;
@@ -155,17 +159,17 @@ namespace Thundagun
 
 											if (deserializedObject.HasActiveUser)
 											{
-												slotConn.GeneratedGameObject.GetComponentInChildren<MeshRenderer>().material.color = Color.green;
+												//slotConn.GeneratedGameObject.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().material.color = Color.green;
 												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>().color = Color.green;
 											}
 											else
 											{
-												slotConn.GeneratedGameObject.GetComponentInChildren<MeshRenderer>().material.color = Color.white;
+												//slotConn.GeneratedGameObject.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().material.color = Color.white;
 												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>().color = Color.white;
 											}
 												
 
-											slotConn.GeneratedGameObject.GetComponentInChildren<MeshRenderer>().enabled = (deserializedObject.IsUserRootSlot) && deserializedObject.Active;
+											//slotConn.GeneratedGameObject.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().enabled = (deserializedObject.IsUserRootSlot) && deserializedObject.Active;
 										}
 										else
 										{
@@ -210,11 +214,11 @@ namespace Thundagun
 
 											if (deserializedObject.HasActiveUser)
 											{
-												go.GetComponentInChildren<MeshRenderer>().material.color = Color.green;
+												//go.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().material.color = Color.green;
 												go.GetComponentInChildren<TextMeshPro>().color = Color.green;
 											}
 
-											go.GetComponentInChildren<MeshRenderer>().enabled = (deserializedObject.IsUserRootSlot) && deserializedObject.Active;
+											//go.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().enabled = (deserializedObject.IsUserRootSlot) && deserializedObject.Active;
 
 											world2.refIdToSlot.Add(deserializedObject.RefId, newSc);
 											world2.goToSlot.Add(go, newSc);
@@ -321,6 +325,50 @@ namespace Thundagun
 									if (world.WorldRoot) UnityEngine.Object.Destroy(world.WorldRoot);
 									world.WorldRoot = null;
 								}
+							}
+							else if (num == (int)PacketTypes.ApplyChangesMeshRenderer)
+							{
+								ApplyChangesMeshRendererConnector deserializedObject = new();
+								deserializedObject.Deserialize(buffer);
+
+								RunSynchronously(() => 
+								{
+									myLogger.PushMessage(deserializedObject.ToString());
+
+									if (WorldManager.idToWorld.TryGetValue(deserializedObject.worldId, out var world))
+									{
+										if (world.refIdToSlot.TryGetValue(deserializedObject.slotRefId, out var slot))
+										{
+											var go = slot.RequestGameObject();
+											MeshFilter filter = go.GetComponent<MeshFilter>();
+											if (filter == null)
+											{
+												filter = go.AddComponent<MeshFilter>();
+											}
+											MeshRenderer renderer = go.GetComponent<MeshRenderer>();
+											if (renderer == null)
+											{
+												renderer = go.AddComponent<MeshRenderer>();
+											}
+											renderer.material = DefaultMat;
+											renderer.enabled = true;
+											var meshRendererConnector = new MeshRendererConnector();
+											slot.Meshes.Add(meshRendererConnector);
+											meshRendererConnector.mesh = new Mesh();
+											filter.mesh = meshRendererConnector.mesh;
+											filter.mesh.MarkDynamic();
+											filter.mesh.Clear();
+
+											filter.mesh.SetVertices(deserializedObject.verts);
+											filter.mesh.SetNormals(deserializedObject.normals);
+											filter.mesh.SetTangents(deserializedObject.tangents);
+											filter.mesh.SetTriangles(deserializedObject.triangleIndices, 0);
+
+											filter.mesh.RecalculateBounds();
+											filter.mesh.UploadMeshData(false);
+										}
+									}
+								});
 							}
 						}
 						//updates++;
