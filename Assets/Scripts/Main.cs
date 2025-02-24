@@ -346,37 +346,90 @@ namespace Thundagun
 										if (world.refIdToSlot.TryGetValue(deserializedObject.slotRefId, out var slot))
 										{
 											var go = slot.RequestGameObject();
-											MeshFilter filter = go.GetComponent<MeshFilter>();
-											if (filter == null)
-											{
-												filter = go.AddComponent<MeshFilter>();
-											}
-											MeshRenderer renderer = go.GetComponent<MeshRenderer>();
-											if (renderer == null)
-											{
-												renderer = go.AddComponent<MeshRenderer>();
-											}
-											renderer.material = DefaultMat;
-											renderer.enabled = true;
+
 											var meshRendererConnector = new MeshRendererConnector();
 											slot.Meshes.Add(meshRendererConnector);
 											meshRendererConnector.mesh = new Mesh();
-											filter.mesh = meshRendererConnector.mesh;
-											filter.mesh.MarkDynamic();
-											filter.mesh.Clear();
 
-											filter.mesh.SetVertices(deserializedObject.verts);
-											filter.mesh.SetNormals(deserializedObject.normals);
-											filter.mesh.SetTangents(deserializedObject.tangents);
-											filter.mesh.SetTriangles(deserializedObject.triangleIndices, 0);
-											filter.mesh.SetColors(deserializedObject.colors);
-											if (AssetManager.LocalPathToShader.TryGetValue(deserializedObject.shaderPath, out ShaderConnector shadConn))
+											if (!deserializedObject.isSkinned)
 											{
-												renderer.material = new Material(shadConn.shader);
-											}
+												MeshFilter filter = null;
+												filter = go.GetComponent<MeshFilter>();
+												if (filter == null)
+												{
+													filter = go.AddComponent<MeshFilter>();
+												}
+												MeshRenderer renderer = go.GetComponent<MeshRenderer>();
+												if (renderer == null)
+												{
+													renderer = go.AddComponent<MeshRenderer>();
+												}
+												renderer.material = DefaultMat;
+												renderer.enabled = true;
+												if (AssetManager.LocalPathToShader.TryGetValue(deserializedObject.shaderPath, out ShaderConnector shadConn))
+												{
+													renderer.material = new Material(shadConn.shader);
+												}
+												filter.mesh = meshRendererConnector.mesh;
+												//filter.mesh.MarkDynamic();
+												filter.mesh.Clear();
 
-											filter.mesh.RecalculateBounds();
-											filter.mesh.UploadMeshData(false);
+												filter.mesh.SetVertices(deserializedObject.verts);
+												filter.mesh.SetNormals(deserializedObject.normals);
+												filter.mesh.SetTangents(deserializedObject.tangents);
+												filter.mesh.SetTriangles(deserializedObject.triangleIndices, 0);
+												filter.mesh.SetColors(deserializedObject.colors);
+
+												filter.mesh.RecalculateBounds();
+												//filter.mesh.UploadMeshData(false);
+											}
+											else
+											{
+												SkinnedMeshRenderer skinned = null;
+												skinned = go.GetComponent<SkinnedMeshRenderer>();
+												if (skinned == null)
+												{
+													skinned = go.AddComponent<SkinnedMeshRenderer>();
+												}
+												skinned.material = DefaultMat;
+												skinned.enabled = true;
+												if (AssetManager.LocalPathToShader.TryGetValue(deserializedObject.shaderPath, out ShaderConnector shadConn))
+												{
+													skinned.material = new Material(shadConn.shader);
+												}
+												skinned.sharedMesh = meshRendererConnector.mesh;
+												//skinned.sharedMesh.MarkDynamic();
+												skinned.sharedMesh.Clear();
+
+												skinned.sharedMesh.SetVertices(deserializedObject.verts);
+												skinned.sharedMesh.SetNormals(deserializedObject.normals);
+												skinned.sharedMesh.SetTangents(deserializedObject.tangents);
+												skinned.sharedMesh.SetTriangles(deserializedObject.triangleIndices, 0);
+												skinned.sharedMesh.SetColors(deserializedObject.colors);
+												skinned.sharedMesh.boneWeights = deserializedObject.boneWeights.ToArray();
+												skinned.sharedMesh.bindposes = deserializedObject.bindPoses.ToArray();
+
+												// do transforms
+												skinned.bones = new Transform[deserializedObject.boneRefIds.Count];
+												int i = 0;
+												foreach (var refId in deserializedObject.boneRefIds)
+												{
+													if (world.refIdToSlot.TryGetValue(refId, out var boneSlot))
+													{
+														skinned.bones[i] = boneSlot.RequestGameObject().transform;
+													}
+													else
+													{
+														myLogger.PushMessage("Failed to get bone transform for skinned renderer");
+													}
+													i++;
+												}
+
+												skinned.sharedMesh.RecalculateBounds();
+												//skinned.sharedMesh.UploadMeshData(false);
+
+												//skinned.
+											}
 										}
 									}
 								});
