@@ -19,6 +19,11 @@ namespace Thundagun
 		public static Dictionary<GameObject, WorldConnector> goToWorld = new();
 	}
 
+	public class AssetManager
+	{
+		public static Dictionary<string, ShaderConnector> LocalPathToShader = new();
+	}
+
 	public enum PacketTypes
 	{
 		Sync,
@@ -28,7 +33,8 @@ namespace Thundagun
 		ChangeFocusWorld,
 		DestroyWorld,
 		ApplyChangesMeshRenderer,
-		DestroyMeshRenderer
+		DestroyMeshRenderer,
+		LoadFromFileShader
 	}
 
 	public class Main : MonoBehaviour
@@ -363,10 +369,68 @@ namespace Thundagun
 											filter.mesh.SetNormals(deserializedObject.normals);
 											filter.mesh.SetTangents(deserializedObject.tangents);
 											filter.mesh.SetTriangles(deserializedObject.triangleIndices, 0);
+											filter.mesh.SetColors(deserializedObject.colors);
+											if (AssetManager.LocalPathToShader.TryGetValue(deserializedObject.shaderPath, out ShaderConnector shadConn))
+											{
+												renderer.material = new Material(shadConn.shader);
+											}
 
 											filter.mesh.RecalculateBounds();
 											filter.mesh.UploadMeshData(false);
 										}
+									}
+								});
+							}
+							else if (num == (int)PacketTypes.LoadFromFileShader)
+							{
+								LoadFromFileShaderConnector deserializedObject = new();
+								deserializedObject.Deserialize(buffer);
+
+								RunSynchronously(() => 
+								{
+									try
+									{
+										var bundleRequest = AssetBundle.LoadFromFileAsync(deserializedObject.File);
+										AssetBundleRequest shaderRequest;
+										bundleRequest.completed += delegate
+										{
+											try
+											{
+												if (bundleRequest.assetBundle == null)
+												{
+													myLogger.PushMessage($"Could not load shader asset bundle: {deserializedObject.File}, exists: {File.Exists(deserializedObject.File)}");
+												}
+												else
+												{
+													shaderRequest = bundleRequest.assetBundle.LoadAssetAsync<Shader>(bundleRequest.assetBundle.GetAllAssetNames()[0]);
+													shaderRequest.completed += delegate
+													{
+														try
+														{
+															ShaderConnector shad = new();
+															shad.shader = shaderRequest.asset as Shader;
+															if (!AssetManager.LocalPathToShader.ContainsKey(deserializedObject.LocalPath))
+															{
+																AssetManager.LocalPathToShader.Add(deserializedObject.LocalPath, shad);
+																myLogger.PushMessage($"Successfully loaded a shader from the bundle {deserializedObject.File}");
+															}
+														}
+														catch (Exception arg2)
+														{
+															myLogger.PushMessage($"Exception loading shader from the loaded bundle {deserializedObject.File}\n{arg2}");
+														}
+													};
+												}
+											}
+											catch (Exception arg)
+											{
+												myLogger.PushMessage($"Exception processing loaded shader bundle for {deserializedObject.File}\n{arg}");
+											}
+										};
+									}
+									catch (Exception ex)
+									{
+										myLogger.PushMessage("Exception loading shader from file: " + deserializedObject.File + "\n" + ex);
 									}
 								});
 							}

@@ -1,5 +1,6 @@
 using SharedMemory;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 namespace Thundagun
@@ -13,14 +14,20 @@ namespace Thundagun
 		public List<Vector3> verts = new();
 		public List<Vector3> normals = new();
 		public List<Vector4> tangents = new();
+		public List<Color> colors = new();
 		public List<int> triangleIndices = new();
 		public ulong slotRefId;
 		public long worldId;
+		public string shaderPath;
 
 		public void Deserialize(CircularBuffer buffer)
 		{
 			buffer.Read(out slotRefId);
 			buffer.Read(out worldId);
+
+			var bytes2 = new byte[512];
+			buffer.Read(bytes2);
+			shaderPath = Encoding.UTF8.GetString(bytes2);
 
 			int vertCount;
 			buffer.Read(out vertCount);
@@ -63,6 +70,21 @@ namespace Thundagun
 				tangents.Add(new Vector4(x, y, z, w));
 			}
 
+			int colorCount;
+			buffer.Read(out colorCount);
+			for (int i = 0; i < colorCount; i++)
+			{
+				float r;
+				buffer.Read(out r);
+				float g;
+				buffer.Read(out g);
+				float b;
+				buffer.Read(out b);
+				float a;
+				buffer.Read(out a);
+				colors.Add(new Color(r, g, b, a));
+			}
+
 			int triangleIndexCount;
 			buffer.Read(out triangleIndexCount);
 			for (int i = 0; i < triangleIndexCount / 3; i++)
@@ -83,6 +105,8 @@ namespace Thundagun
 		{
 			buffer.Write(ref slotRefId);
 			buffer.Write(ref worldId);
+
+			buffer.Write(Encoding.UTF8.GetBytes(shaderPath));
 
 			int vertCount = verts.Count;
 			buffer.Write(ref vertCount);
@@ -120,6 +144,20 @@ namespace Thundagun
 				buffer.Write(ref z);
 				float w = tangent.w;
 				buffer.Write(ref w);
+			}
+
+			int colorCount = colors.Count;
+			buffer.Write(ref colorCount);
+			foreach (var color in colors)
+			{
+				float r = color.r;
+				buffer.Write(ref r);
+				float g = color.g;
+				buffer.Write(ref g);
+				float b = color.b;
+				buffer.Write(ref b);
+				float a = color.a;
+				buffer.Write(ref a);
 			}
 
 			int triangleIndexCount = triangleIndices.Count;
