@@ -10,9 +10,16 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.Animations;
 using Unity.VisualScripting;
+using UnityEditor;
+using UnityEngine.LightTransport;
+using System.Runtime.CompilerServices;
 
 namespace Thundagun
 {
+	public class Constants
+	{
+		public const int MAX_STRING_LENGTH = 256;
+	}
 	public class WorldManager
 	{
 		public static Dictionary<long, WorldConnector> idToWorld = new();
@@ -22,6 +29,7 @@ namespace Thundagun
 	public class AssetManager
 	{
 		public static Dictionary<string, ShaderConnector> LocalPathToShader = new();
+		public static Dictionary<string, MeshConnector> LocalPathToMesh = new();
 	}
 
 	public enum PacketTypes
@@ -34,7 +42,8 @@ namespace Thundagun
 		DestroyWorld,
 		ApplyChangesMeshRenderer,
 		DestroyMeshRenderer,
-		LoadFromFileShader
+		LoadFromFileShader,
+		ApplyChangesMeshConnector
 	}
 
 	public class Main : MonoBehaviour
@@ -47,7 +56,14 @@ namespace Thundagun
 		public float camSpeed;
 		private static bool started = false;
 		private static CircularBuffer buffer;
+		private static CircularBuffer returnBuffer;
+		private static BufferReadWrite syncBuffer;
 		private static Queue<Action> synchronousActions = new();
+
+		// Track the current vertical angle
+		private float currentVerticalAngle = 0f;
+		private float verticalAngleLimit = 80f; // Limit in degrees, adjust as needed
+
 		//private static int updates = 0;
 		const bool DEBUG = true; // use when running in the Unity editor, so that the editor doesn't get closed
 
@@ -69,8 +85,7 @@ namespace Thundagun
 					myLogger.PushMessage(string.Join(',', args));
 				}
 
-				var syncBuffer = new BufferReadWrite("SyncBuffer");
-				var returnBuffer = new CircularBuffer("ReturnBuffer");
+				syncBuffer = new BufferReadWrite("SyncBuffer5");
 
 				myLogger.PushMessage("SyncBuffer opened.");
 
@@ -83,7 +98,8 @@ namespace Thundagun
 				myLogger.PushMessage($"Got id {num} from SyncBuffer.");
 
 				buffer = new CircularBuffer($"MyBuffer{num}");
-				
+				returnBuffer = new CircularBuffer($"ReturnBuffer{num}");
+
 				myLogger.PushMessage($"MyBuffer{num} opened.");
 
 				myLogger.PushMessage($"Returning id {num}.");
@@ -151,11 +167,12 @@ namespace Thundagun
 											slotConn.SetData();
 											slotConn.GeneratedGameObject.name = deserializedObject.SlotName;
 
-											var text = slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>();
+											var text = slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>(includeInactive: true);
 											if ((deserializedObject.ShouldRender || slotConn.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
 											{
 												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = true;
 												text.text = deserializedObject.SlotName;
+												text.gameObject.SetActive(true);
 											}
 											else
 											{
@@ -166,12 +183,12 @@ namespace Thundagun
 											if (deserializedObject.HasActiveUser)
 											{
 												//slotConn.GeneratedGameObject.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().material.color = Color.green;
-												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>().color = Color.green;
+												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>(includeInactive: true).color = Color.green;
 											}
 											else
 											{
 												//slotConn.GeneratedGameObject.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().material.color = Color.white;
-												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>().color = Color.white;
+												slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>(includeInactive: true).color = Color.white;
 											}
 												
 
@@ -206,11 +223,12 @@ namespace Thundagun
 											var go = newSc.RequestGameObject();
 											go.name = deserializedObject.SlotName;
 
-											var text = go.GetComponentInChildren<TextMeshPro>();
+											var text = go.GetComponentInChildren<TextMeshPro>(includeInactive: true);
 											if ((deserializedObject.ShouldRender || newSc.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
 											{
 												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = true;
 												text.text = deserializedObject.SlotName;
+												text.gameObject.SetActive(true);
 											}
 											else
 											{
@@ -221,7 +239,7 @@ namespace Thundagun
 											if (deserializedObject.HasActiveUser)
 											{
 												//go.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().material.color = Color.green;
-												go.GetComponentInChildren<TextMeshPro>().color = Color.green;
+												go.GetComponentInChildren<TextMeshPro>(includeInactive: true).color = Color.green;
 											}
 
 											//go.transform.GetChild(0).GetComponentInChildren<MeshRenderer>().enabled = (deserializedObject.IsUserRootSlot) && deserializedObject.Active;
@@ -263,7 +281,7 @@ namespace Thundagun
 
 								RunSynchronously(() =>
 								{
-									//myLogger.PushMessage(deserializedObject.ToString());
+									myLogger.PushMessage(deserializedObject.ToString());
 									if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world))
 									{
 										if (world.refIdToSlot.TryGetValue(deserializedObject.RefID, out var slot))
@@ -326,11 +344,14 @@ namespace Thundagun
 								DestroyWorldConnector deserializedObject = new();
 								deserializedObject.Deserialize(buffer);
 
-								if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world))
+								RunSynchronously(() => 
 								{
-									if (world.WorldRoot) UnityEngine.Object.Destroy(world.WorldRoot);
-									world.WorldRoot = null;
-								}
+									if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world))
+									{
+										if (world.WorldRoot) UnityEngine.Object.Destroy(world.WorldRoot);
+										world.WorldRoot = null;
+									}
+								});
 							}
 							else if (num == (int)PacketTypes.ApplyChangesMeshRenderer)
 							{
@@ -340,7 +361,7 @@ namespace Thundagun
 								RunSynchronously(() => 
 								{
 									myLogger.PushMessage(deserializedObject.ToString());
-
+									if (deserializedObject.meshPath == "NULL") return;
 									if (WorldManager.idToWorld.TryGetValue(deserializedObject.worldId, out var world))
 									{
 										if (world.refIdToSlot.TryGetValue(deserializedObject.slotRefId, out var slot))
@@ -348,8 +369,16 @@ namespace Thundagun
 											var go = slot.RequestGameObject();
 
 											var meshRendererConnector = new MeshRendererConnector();
-											slot.Meshes.Add(meshRendererConnector);
-											meshRendererConnector.mesh = new Mesh();
+											//slot.Meshes.Add(meshRendererConnector);\
+											MeshConnector meshConn = null;
+											if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out meshConn))
+											{
+												meshRendererConnector.mesh = meshConn.mesh;
+											}
+											else
+											{
+												meshRendererConnector.mesh = null;
+											}
 
 											if (!deserializedObject.isSkinned)
 											{
@@ -371,17 +400,6 @@ namespace Thundagun
 													renderer.material = new Material(shadConn.shader);
 												}
 												filter.mesh = meshRendererConnector.mesh;
-												//filter.mesh.MarkDynamic();
-												filter.mesh.Clear();
-
-												filter.mesh.SetVertices(deserializedObject.verts);
-												filter.mesh.SetNormals(deserializedObject.normals);
-												filter.mesh.SetTangents(deserializedObject.tangents);
-												filter.mesh.SetTriangles(deserializedObject.triangleIndices, 0);
-												filter.mesh.SetColors(deserializedObject.colors);
-
-												filter.mesh.RecalculateBounds();
-												//filter.mesh.UploadMeshData(false);
 											}
 											else
 											{
@@ -398,16 +416,6 @@ namespace Thundagun
 													skinned.material = new Material(shadConn.shader);
 												}
 												skinned.sharedMesh = meshRendererConnector.mesh;
-												//skinned.sharedMesh.MarkDynamic();
-												skinned.sharedMesh.Clear();
-
-												skinned.sharedMesh.SetVertices(deserializedObject.verts);
-												skinned.sharedMesh.SetNormals(deserializedObject.normals);
-												skinned.sharedMesh.SetTangents(deserializedObject.tangents);
-												skinned.sharedMesh.SetTriangles(deserializedObject.triangleIndices, 0);
-												skinned.sharedMesh.SetColors(deserializedObject.colors);
-												skinned.sharedMesh.boneWeights = deserializedObject.boneWeights.ToArray();
-												skinned.sharedMesh.bindposes = deserializedObject.bindPoses.ToArray();
 
 												// do transforms
 												skinned.bones = new Transform[deserializedObject.boneRefIds.Count];
@@ -424,11 +432,6 @@ namespace Thundagun
 													}
 													i++;
 												}
-
-												skinned.sharedMesh.RecalculateBounds();
-												//skinned.sharedMesh.UploadMeshData(false);
-
-												//skinned.
 											}
 										}
 									}
@@ -441,6 +444,7 @@ namespace Thundagun
 
 								RunSynchronously(() => 
 								{
+									myLogger.PushMessage(deserializedObject.ToString());
 									try
 									{
 										var bundleRequest = AssetBundle.LoadFromFileAsync(deserializedObject.File);
@@ -487,6 +491,70 @@ namespace Thundagun
 									}
 								});
 							}
+							else if (num == (int)PacketTypes.ApplyChangesMeshConnector)
+							{
+								ApplyChangesMeshConnector deserializedObject = new();
+								deserializedObject.Deserialize(buffer);
+
+								RunSynchronously(() => 
+								{
+									myLogger.PushMessage(deserializedObject.ToString());
+									// find out if the mesh is already stored
+									MeshConnector meshConn;
+									if (deserializedObject.localPath == "NULL") return;
+									if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.localPath, out meshConn))
+									{
+										Mesh mesh = meshConn.mesh;
+										mesh.Clear();
+										mesh.SetVertices(deserializedObject.verts);
+										mesh.SetNormals(deserializedObject.normals);
+										mesh.SetTangents(deserializedObject.tangents);
+										mesh.SetTriangles(deserializedObject.triangleIndices, 0);
+										mesh.SetColors(deserializedObject.colors);
+										if (deserializedObject.boneWeights.Count > 0)
+										{
+											mesh.boneWeights = deserializedObject.boneWeights.ToArray();
+										}
+										if (deserializedObject.bindPoses.Count > 0)
+										{
+											mesh.bindposes = deserializedObject.bindPoses.ToArray();
+										}
+										foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
+										{
+											mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
+										}
+										mesh.RecalculateBounds();
+									}
+									else
+									{
+										meshConn = new MeshConnector();
+										Mesh mesh = new Mesh();
+										mesh.Clear();
+										mesh.SetVertices(deserializedObject.verts);
+										mesh.SetNormals(deserializedObject.normals);
+										mesh.SetTangents(deserializedObject.tangents);
+										mesh.SetTriangles(deserializedObject.triangleIndices, 0);
+										mesh.SetColors(deserializedObject.colors);
+										if (deserializedObject.boneWeights.Count > 0)
+										{
+											mesh.boneWeights = deserializedObject.boneWeights.ToArray();
+										}
+										if (deserializedObject.bindPoses.Count > 0)
+										{
+											mesh.bindposes = deserializedObject.bindPoses.ToArray();
+										}
+										foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
+										{
+											mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
+										}
+										mesh.RecalculateBounds();
+
+										meshConn.mesh = mesh;
+
+										AssetManager.LocalPathToMesh.Add(deserializedObject.localPath, meshConn);
+									}
+								});
+							}
 						}
 						//updates++;
 						//if (updates > 25)
@@ -504,7 +572,17 @@ namespace Thundagun
 			if (UnityEngine.Input.GetMouseButton(0))
 			{
 				float deltaX = Input.GetAxis("Mouse X") * camSpeed;
+				float deltaY = Input.GetAxis("Mouse Y") * camSpeed;
 				camera1.transform.RotateAround(camera1.transform.position, Vector3.up, deltaX);
+				//camera1.transform.RotateAround(camera1.transform.position, camera1.transform.right, -deltaY);
+
+				// Calculate new vertical angle and clamp it
+				currentVerticalAngle -= deltaY; // Subtract because negative deltaY = looking up
+				currentVerticalAngle = Mathf.Clamp(currentVerticalAngle, -verticalAngleLimit, verticalAngleLimit);
+
+				// Reset camera rotation first (to avoid accumulation issues)
+				Vector3 eulerAngles = camera1.transform.eulerAngles;
+				camera1.transform.rotation = Quaternion.Euler(currentVerticalAngle, eulerAngles.y, 0f);
 			}
 			if (UnityEngine.Input.GetKey(KeyCode.C))
 			{
@@ -556,6 +634,9 @@ namespace Thundagun
 					}
 				}
 			}
+			
+			//int n = 5;
+			//returnBuffer.Write(ref n);
 		}
 
 		// Supposedly this is better for input handling because it runs at a constant time interval, but last I tried it was icky...

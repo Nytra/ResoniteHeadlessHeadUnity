@@ -261,7 +261,7 @@ namespace Thundagun
 
 			buffer.Read(out Reparent);
 
-			var bytes = new byte[128];
+			var bytes = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes);
 			SlotName = Encoding.UTF8.GetString(bytes).Trim();
 

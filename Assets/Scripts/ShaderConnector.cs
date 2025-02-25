@@ -16,11 +16,11 @@ namespace Thundagun
 
 		public void Deserialize(CircularBuffer buffer)
 		{
-			var bytes = new byte[512];
+			var bytes = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes);
 			File = Encoding.UTF8.GetString(bytes);
 
-			var bytes2 = new byte[512];
+			var bytes2 = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes2);
 			LocalPath = Encoding.UTF8.GetString(bytes2);
 		}
@@ -30,6 +30,11 @@ namespace Thundagun
 			buffer.Write(Encoding.UTF8.GetBytes(File));
 
 			buffer.Write(Encoding.UTF8.GetBytes(LocalPath));
+		}
+
+		public override string ToString()
+		{
+			return $"LoadFromFileShaderConnector: {File} {LocalPath}";
 		}
 	}
 }
