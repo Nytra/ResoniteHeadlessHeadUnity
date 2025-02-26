@@ -13,6 +13,7 @@ using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine.LightTransport;
 using System.Runtime.CompilerServices;
+using UnityEngine.Rendering;
 
 namespace Thundagun
 {
@@ -29,7 +30,7 @@ namespace Thundagun
 	public class AssetManager
 	{
 		public static Dictionary<string, ShaderConnector> LocalPathToShader = new();
-		public static Dictionary<string, MeshConnector> LocalPathToMesh = new();
+		public static Dictionary<string, MeshRendererConnector> LocalPathToMesh = new();
 	}
 
 	public enum PacketTypes
@@ -42,8 +43,8 @@ namespace Thundagun
 		DestroyWorld,
 		ApplyChangesMeshRenderer,
 		DestroyMeshRenderer,
-		LoadFromFileShader,
-		ApplyChangesMeshConnector
+		LoadFromFileShader
+		//ApplyChangesMesh
 	}
 
 	public class Main : MonoBehaviour
@@ -85,7 +86,7 @@ namespace Thundagun
 					myLogger.PushMessage(string.Join(',', args));
 				}
 
-				syncBuffer = new BufferReadWrite("SyncBuffer5");
+				syncBuffer = new BufferReadWrite($"SyncBuffer{DateTime.Now.Minute}");
 
 				myLogger.PushMessage("SyncBuffer opened.");
 
@@ -146,6 +147,7 @@ namespace Thundagun
 											slotConn.Rotation = deserializedObject.Rotation;
 											slotConn.Scale = deserializedObject.Scale;
 											slotConn.RefId = deserializedObject.RefId;
+											slotConn.IsLocalElement = deserializedObject.IsLocalElement;
 
 											if (deserializedObject.ForceRender)
 												slotConn.ForceRender = true;
@@ -166,6 +168,11 @@ namespace Thundagun
 											//slotConn.UpdateLayer();
 											slotConn.SetData();
 											slotConn.GeneratedGameObject.name = deserializedObject.SlotName;
+
+											if (slotConn.GeneratedGameObject.name == "LocalAssets" && slotConn.ParentConnector.IsRootSlot && slotConn.IsLocalElement)
+											{
+												slotConn.GeneratedGameObject.SetActive(false);
+											}
 
 											var text = slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>(includeInactive: true);
 											if ((deserializedObject.ShouldRender || slotConn.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
@@ -214,6 +221,7 @@ namespace Thundagun
 											newSc.Rotation = deserializedObject.Rotation;
 											newSc.Scale = deserializedObject.Scale;
 											newSc.RefId = deserializedObject.RefId;
+											newSc.IsLocalElement = deserializedObject.IsLocalElement;
 
 											newSc.parentId = deserializedObject.ParentRefId;
 
@@ -222,6 +230,11 @@ namespace Thundagun
 
 											var go = newSc.RequestGameObject();
 											go.name = deserializedObject.SlotName;
+
+											if (go.name == "LocalAssets" && newSc.ParentConnector.IsRootSlot && newSc.IsLocalElement)
+											{
+												go.SetActive(false);
+											}
 
 											var text = go.GetComponentInChildren<TextMeshPro>(includeInactive: true);
 											if ((deserializedObject.ShouldRender || newSc.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
@@ -281,7 +294,8 @@ namespace Thundagun
 
 								RunSynchronously(() =>
 								{
-									myLogger.PushMessage(deserializedObject.ToString());
+									//myLogger.PushMessage(deserializedObject.ToString());
+
 									if (WorldManager.idToWorld.TryGetValue(deserializedObject.WorldId, out var world))
 									{
 										if (world.refIdToSlot.TryGetValue(deserializedObject.RefID, out var slot))
@@ -360,25 +374,48 @@ namespace Thundagun
 
 								RunSynchronously(() => 
 								{
-									myLogger.PushMessage(deserializedObject.ToString());
-									if (deserializedObject.meshPath == "NULL") return;
+									//myLogger.PushMessage(deserializedObject.ToString());
+									if (deserializedObject.meshPath.Trim() == "NULL") return;
 									if (WorldManager.idToWorld.TryGetValue(deserializedObject.worldId, out var world))
 									{
 										if (world.refIdToSlot.TryGetValue(deserializedObject.slotRefId, out var slot))
 										{
-											var go = slot.RequestGameObject();
+											var go = slot.GeneratedGameObject;
 
-											var meshRendererConnector = new MeshRendererConnector();
-											//slot.Meshes.Add(meshRendererConnector);\
-											MeshConnector meshConn = null;
-											if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out meshConn))
+											Mesh mesh = new();
+
+											mesh.Clear();
+											if (deserializedObject.verts.Count > 0)
+												mesh.SetVertices(deserializedObject.verts);
+											mesh.indexFormat = ((((deserializedObject.verts.Count > 0) ? deserializedObject.verts.Count : 0) > 65535) ? IndexFormat.UInt32 : IndexFormat.UInt16);
+											//mesh.MarkDynamic(); // is this needed?
+											if (deserializedObject.normals.Count > 0)
+												mesh.SetNormals(deserializedObject.normals);
+											if (deserializedObject.tangents.Count > 0)
+												mesh.SetTangents(deserializedObject.tangents);
+											if (deserializedObject.triangleIndices.Count > 0)
+												mesh.SetTriangles(deserializedObject.triangleIndices, 0);
+											if (deserializedObject.colors.Count > 0)
+												mesh.SetColors(deserializedObject.colors);
+											if (deserializedObject.boneWeights.Count > 0)
 											{
-												meshRendererConnector.mesh = meshConn.mesh;
+												mesh.boneWeights = deserializedObject.boneWeights.ToArray();
 											}
-											else
+											if (deserializedObject.bindPoses.Count > 0)
 											{
-												meshRendererConnector.mesh = null;
+												mesh.bindposes = deserializedObject.bindPoses.ToArray();
 											}
+											foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
+											{
+												mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
+											}
+
+											//mesh.bounds = deserializedObject.bounds;
+
+											if (deserializedObject.verts.Count > 0)
+												mesh.RecalculateBounds();
+
+											mesh.UploadMeshData(false);
 
 											if (!deserializedObject.isSkinned)
 											{
@@ -399,10 +436,11 @@ namespace Thundagun
 												{
 													renderer.material = new Material(shadConn.shader);
 												}
-												filter.mesh = meshRendererConnector.mesh;
+												filter.mesh = mesh;
 											}
 											else
 											{
+												return;
 												SkinnedMeshRenderer skinned = null;
 												skinned = go.GetComponent<SkinnedMeshRenderer>();
 												if (skinned == null)
@@ -415,7 +453,7 @@ namespace Thundagun
 												{
 													skinned.material = new Material(shadConn.shader);
 												}
-												skinned.sharedMesh = meshRendererConnector.mesh;
+												skinned.sharedMesh = mesh;
 
 												// do transforms
 												skinned.bones = new Transform[deserializedObject.boneRefIds.Count];
@@ -488,70 +526,6 @@ namespace Thundagun
 									catch (Exception ex)
 									{
 										myLogger.PushMessage("Exception loading shader from file: " + deserializedObject.File + "\n" + ex);
-									}
-								});
-							}
-							else if (num == (int)PacketTypes.ApplyChangesMeshConnector)
-							{
-								ApplyChangesMeshConnector deserializedObject = new();
-								deserializedObject.Deserialize(buffer);
-
-								RunSynchronously(() => 
-								{
-									myLogger.PushMessage(deserializedObject.ToString());
-									// find out if the mesh is already stored
-									MeshConnector meshConn;
-									if (deserializedObject.localPath == "NULL") return;
-									if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.localPath, out meshConn))
-									{
-										Mesh mesh = meshConn.mesh;
-										mesh.Clear();
-										mesh.SetVertices(deserializedObject.verts);
-										mesh.SetNormals(deserializedObject.normals);
-										mesh.SetTangents(deserializedObject.tangents);
-										mesh.SetTriangles(deserializedObject.triangleIndices, 0);
-										mesh.SetColors(deserializedObject.colors);
-										if (deserializedObject.boneWeights.Count > 0)
-										{
-											mesh.boneWeights = deserializedObject.boneWeights.ToArray();
-										}
-										if (deserializedObject.bindPoses.Count > 0)
-										{
-											mesh.bindposes = deserializedObject.bindPoses.ToArray();
-										}
-										foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
-										{
-											mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
-										}
-										mesh.RecalculateBounds();
-									}
-									else
-									{
-										meshConn = new MeshConnector();
-										Mesh mesh = new Mesh();
-										mesh.Clear();
-										mesh.SetVertices(deserializedObject.verts);
-										mesh.SetNormals(deserializedObject.normals);
-										mesh.SetTangents(deserializedObject.tangents);
-										mesh.SetTriangles(deserializedObject.triangleIndices, 0);
-										mesh.SetColors(deserializedObject.colors);
-										if (deserializedObject.boneWeights.Count > 0)
-										{
-											mesh.boneWeights = deserializedObject.boneWeights.ToArray();
-										}
-										if (deserializedObject.bindPoses.Count > 0)
-										{
-											mesh.bindposes = deserializedObject.bindPoses.ToArray();
-										}
-										foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
-										{
-											mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
-										}
-										mesh.RecalculateBounds();
-
-										meshConn.mesh = mesh;
-
-										AssetManager.LocalPathToMesh.Add(deserializedObject.localPath, meshConn);
 									}
 								});
 							}

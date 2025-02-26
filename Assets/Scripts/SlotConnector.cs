@@ -28,6 +28,7 @@ namespace Thundagun
 		public bool IsRootSlot;
 		public ulong parentId;
 		public bool ForceRender;
+		public bool IsLocalElement;
 
 		public List<MeshRendererConnector> Meshes = new();
 
@@ -180,6 +181,7 @@ namespace Thundagun
 		public bool HasActiveUser;
 		public bool ShouldRender;
 		public bool ForceRender;
+		public bool IsLocalElement;
 
 		public void Serialize(CircularBuffer buffer)
 		{
@@ -223,6 +225,8 @@ namespace Thundagun
 			buffer.Write(ref ShouldRender);
 
 			buffer.Write(ref ForceRender);
+
+			buffer.Write(ref IsLocalElement);
 		}
 		public void Deserialize(CircularBuffer buffer)
 		{
@@ -274,6 +278,8 @@ namespace Thundagun
 			buffer.Read(out ShouldRender);
 
 			buffer.Read(out ForceRender);
+
+			buffer.Read(out IsLocalElement);
 		}
 
 		public override string ToString()
