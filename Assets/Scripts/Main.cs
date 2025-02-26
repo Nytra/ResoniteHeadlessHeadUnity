@@ -30,7 +30,7 @@ namespace Thundagun
 	public class AssetManager
 	{
 		public static Dictionary<string, ShaderConnector> LocalPathToShader = new();
-		public static Dictionary<string, MeshRendererConnector> LocalPathToMesh = new();
+		public static Dictionary<string, MeshConnector> LocalPathToMesh = new();
 	}
 
 	public enum PacketTypes
@@ -43,8 +43,8 @@ namespace Thundagun
 		DestroyWorld,
 		ApplyChangesMeshRenderer,
 		DestroyMeshRenderer,
-		LoadFromFileShader
-		//ApplyChangesMesh
+		LoadFromFileShader,
+		ApplyChangesMesh
 	}
 
 	public class Main : MonoBehaviour
@@ -382,41 +382,6 @@ namespace Thundagun
 										{
 											var go = slot.GeneratedGameObject;
 
-											Mesh mesh = new();
-
-											mesh.Clear();
-											if (deserializedObject.verts.Count > 0)
-												mesh.SetVertices(deserializedObject.verts);
-											mesh.indexFormat = ((((deserializedObject.verts.Count > 0) ? deserializedObject.verts.Count : 0) > 65535) ? IndexFormat.UInt32 : IndexFormat.UInt16);
-											//mesh.MarkDynamic(); // is this needed?
-											if (deserializedObject.normals.Count > 0)
-												mesh.SetNormals(deserializedObject.normals);
-											if (deserializedObject.tangents.Count > 0)
-												mesh.SetTangents(deserializedObject.tangents);
-											if (deserializedObject.triangleIndices.Count > 0)
-												mesh.SetTriangles(deserializedObject.triangleIndices, 0);
-											if (deserializedObject.colors.Count > 0)
-												mesh.SetColors(deserializedObject.colors);
-											if (deserializedObject.boneWeights.Count > 0)
-											{
-												mesh.boneWeights = deserializedObject.boneWeights.ToArray();
-											}
-											if (deserializedObject.bindPoses.Count > 0)
-											{
-												mesh.bindposes = deserializedObject.bindPoses.ToArray();
-											}
-											foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
-											{
-												mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
-											}
-
-											//mesh.bounds = deserializedObject.bounds;
-
-											if (deserializedObject.verts.Count > 0)
-												mesh.RecalculateBounds();
-
-											mesh.UploadMeshData(false);
-
 											if (!deserializedObject.isSkinned)
 											{
 												MeshFilter filter = null;
@@ -436,7 +401,18 @@ namespace Thundagun
 												{
 													renderer.material = new Material(shadConn.shader);
 												}
-												filter.mesh = mesh;
+												MeshConnector meshConn;
+												if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out meshConn))
+												{
+													filter.mesh = meshConn.mesh;
+												}
+												else
+												{
+													filter.mesh = new();
+													meshConn = new();
+													meshConn.mesh = filter.mesh;
+													AssetManager.LocalPathToMesh.Add(deserializedObject.meshPath, meshConn);
+												}
 											}
 											else
 											{
@@ -453,7 +429,17 @@ namespace Thundagun
 												{
 													skinned.material = new Material(shadConn.shader);
 												}
-												skinned.sharedMesh = mesh;
+												if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out MeshConnector meshConn))
+												{
+													skinned.sharedMesh = meshConn.mesh;
+												}
+												else
+												{
+													skinned.sharedMesh = new();
+													meshConn = new();
+													meshConn.mesh = skinned.sharedMesh;
+													AssetManager.LocalPathToMesh.Add(deserializedObject.meshPath, meshConn);
+												}
 
 												// do transforms
 												skinned.bones = new Transform[deserializedObject.boneRefIds.Count];
@@ -527,6 +513,64 @@ namespace Thundagun
 									{
 										myLogger.PushMessage("Exception loading shader from file: " + deserializedObject.File + "\n" + ex);
 									}
+								});
+							}
+							else if (num == (int)PacketTypes.ApplyChangesMesh)
+							{
+								ApplyChangesMeshConnector deserializedObject = new();
+								deserializedObject.Deserialize(buffer);
+
+								RunSynchronously(() => 
+								{
+									if (deserializedObject.localPath.Trim() == "NULL") return;
+
+									MeshConnector meshConn;
+									
+									Mesh mesh;
+									if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.localPath, out meshConn))
+									{
+										mesh = meshConn.mesh;
+									}
+									else
+									{
+										mesh = new();
+										meshConn = new();
+										meshConn.mesh = mesh;
+										AssetManager.LocalPathToMesh.Add(deserializedObject.localPath, meshConn);
+									}
+
+									mesh.Clear();
+									if (deserializedObject.verts.Count > 0)
+										mesh.SetVertices(deserializedObject.verts);
+									mesh.indexFormat = ((((deserializedObject.verts.Count > 0) ? deserializedObject.verts.Count : 0) > 65535) ? IndexFormat.UInt32 : IndexFormat.UInt16);
+									//mesh.MarkDynamic(); // is this needed?
+									if (deserializedObject.normals.Count > 0)
+										mesh.SetNormals(deserializedObject.normals);
+									if (deserializedObject.tangents.Count > 0)
+										mesh.SetTangents(deserializedObject.tangents);
+									if (deserializedObject.triangleIndices.Count > 0)
+										mesh.SetTriangles(deserializedObject.triangleIndices, 0);
+									if (deserializedObject.colors.Count > 0)
+										mesh.SetColors(deserializedObject.colors);
+									if (deserializedObject.boneWeights.Count > 0)
+									{
+										mesh.boneWeights = deserializedObject.boneWeights.ToArray();
+									}
+									if (deserializedObject.bindPoses.Count > 0)
+									{
+										mesh.bindposes = deserializedObject.bindPoses.ToArray();
+									}
+									foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
+									{
+										mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
+									}
+
+									//mesh.bounds = deserializedObject.bounds;
+
+									if (deserializedObject.verts.Count > 0)
+										mesh.RecalculateBounds();
+
+									mesh.UploadMeshData(false);
 								});
 							}
 						}
