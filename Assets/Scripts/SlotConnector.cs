@@ -267,7 +267,7 @@ namespace Thundagun
 
 			var bytes = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes);
-			SlotName = Encoding.UTF8.GetString(bytes).Trim();
+			SlotName = Encoding.UTF8.GetString(bytes);
 
 			buffer.Read(out WorldId);
 
