@@ -17,6 +17,7 @@ namespace Thundagun
 		public string shaderPath;
 		public bool isSkinned;
 		public string meshPath;
+		public ulong ownerId;
 
 		//public List<Vector3> verts = new();
 		//public List<Vector3> normals = new();
@@ -40,6 +41,8 @@ namespace Thundagun
 			var bytes3 = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes3);
 			meshPath = Encoding.UTF8.GetString(bytes3);
+
+			buffer.Read(out ownerId);
 
 			if (isSkinned)
 			{
@@ -262,6 +265,8 @@ namespace Thundagun
 
 			buffer.Write(Encoding.UTF8.GetBytes(meshPath));
 
+			buffer.Write(ref ownerId);
+
 			if (isSkinned)
 			{
 				int boneRefIdsCount = boneRefIds.Count;
@@ -473,7 +478,7 @@ namespace Thundagun
 		}
 		public override string ToString()
 		{
-			return $"ApplyChangesMeshRendererConnector: {isSkinned} {shaderPath} {meshPath}";
+			return $"ApplyChangesMeshRendererConnector: {isSkinned} {shaderPath} {ownerId}";
 		}
 	}
 

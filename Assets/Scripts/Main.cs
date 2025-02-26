@@ -30,6 +30,7 @@ namespace Thundagun
 	public class AssetManager
 	{
 		public static Dictionary<string, ShaderConnector> LocalPathToShader = new();
+		public static Dictionary<ulong, MeshConnector> OwnerIdToMesh = new();
 		public static Dictionary<string, MeshConnector> LocalPathToMesh = new();
 	}
 
@@ -375,7 +376,7 @@ namespace Thundagun
 								RunSynchronously(() => 
 								{
 									//myLogger.PushMessage(deserializedObject.ToString());
-									if (deserializedObject.meshPath.Trim() == "NULL") return;
+									//if (deserializedObject.meshPath.Trim() == "NULL") return;
 									if (WorldManager.idToWorld.TryGetValue(deserializedObject.worldId, out var world))
 									{
 										if (world.refIdToSlot.TryGetValue(deserializedObject.slotRefId, out var slot))
@@ -402,16 +403,30 @@ namespace Thundagun
 													renderer.material = new Material(shadConn.shader);
 												}
 												MeshConnector meshConn;
-												if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out meshConn))
+												if (AssetManager.OwnerIdToMesh.TryGetValue(deserializedObject.ownerId, out meshConn))
 												{
 													filter.mesh = meshConn.mesh;
 												}
 												else
 												{
-													filter.mesh = new();
-													meshConn = new();
-													meshConn.mesh = filter.mesh;
-													AssetManager.LocalPathToMesh.Add(deserializedObject.meshPath, meshConn);
+													if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out meshConn))
+													{
+														filter.mesh = meshConn.mesh;
+													}
+													else
+													{
+														filter.mesh = new();
+														meshConn = new();
+														meshConn.mesh = filter.mesh;
+														if (deserializedObject.ownerId != default)
+														{
+															AssetManager.OwnerIdToMesh.Add(deserializedObject.ownerId, meshConn);
+														}
+														else
+														{
+															AssetManager.LocalPathToMesh.Add(deserializedObject.meshPath, meshConn);
+														}
+													}
 												}
 											}
 											else
@@ -429,16 +444,35 @@ namespace Thundagun
 												{
 													skinned.material = new Material(shadConn.shader);
 												}
-												if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out MeshConnector meshConn))
+												if (AssetManager.OwnerIdToMesh.TryGetValue(deserializedObject.ownerId, out MeshConnector meshConn))
 												{
 													skinned.sharedMesh = meshConn.mesh;
 												}
 												else
 												{
-													skinned.sharedMesh = new();
-													meshConn = new();
-													meshConn.mesh = skinned.sharedMesh;
-													AssetManager.LocalPathToMesh.Add(deserializedObject.meshPath, meshConn);
+													if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out meshConn))
+													{
+														skinned.sharedMesh = meshConn.mesh;
+													}
+													else
+													{
+														skinned.sharedMesh = new();
+														meshConn = new();
+														meshConn.mesh = skinned.sharedMesh;
+														if (deserializedObject.ownerId != default)
+														{
+															AssetManager.OwnerIdToMesh.Add(deserializedObject.ownerId, meshConn);
+														}
+														else
+														{
+															AssetManager.LocalPathToMesh.Add(deserializedObject.meshPath, meshConn);
+														}
+													}
+
+													//skinned.sharedMesh = new();
+													//meshConn = new();
+													//meshConn.mesh = skinned.sharedMesh;
+													//AssetManager.OwnerIdToMesh.Add(deserializedObject.ownerId, meshConn);
 												}
 
 												// do transforms
@@ -522,21 +556,35 @@ namespace Thundagun
 
 								RunSynchronously(() => 
 								{
-									if (deserializedObject.localPath.Trim() == "NULL") return;
+									//if (deserializedObject.localPath.Trim() == "NULL") return;
 
 									MeshConnector meshConn;
 									
 									Mesh mesh;
-									if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.localPath, out meshConn))
+									if (AssetManager.OwnerIdToMesh.TryGetValue(deserializedObject.ownerId, out meshConn))
 									{
 										mesh = meshConn.mesh;
 									}
 									else
 									{
-										mesh = new();
-										meshConn = new();
-										meshConn.mesh = mesh;
-										AssetManager.LocalPathToMesh.Add(deserializedObject.localPath, meshConn);
+										if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.localPath, out meshConn))
+										{
+											mesh = meshConn.mesh;
+										}
+										else
+										{
+											mesh = new();
+											meshConn = new();
+											meshConn.mesh = mesh;
+											if (deserializedObject.ownerId != default)
+											{
+												AssetManager.OwnerIdToMesh.Add(deserializedObject.ownerId, meshConn);
+											}
+											else
+											{
+												AssetManager.LocalPathToMesh.Add(deserializedObject.localPath, meshConn);
+											}
+										}
 									}
 
 									mesh.Clear();

@@ -30,11 +30,14 @@ namespace Thundagun
 		public List<BlendShapeFrame> blendShapeFrames = new();
 		public Bounds bounds;
 		public string localPath;
+		public ulong ownerId;
 		public void Deserialize(CircularBuffer buffer)
 		{
 			var bytes2 = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes2);
 			localPath = Encoding.UTF8.GetString(bytes2);
+
+			buffer.Read(out ownerId);
 
 			int vertCount;
 			buffer.Read(out vertCount);
@@ -239,6 +242,8 @@ namespace Thundagun
 		{
 			buffer.Write(Encoding.UTF8.GetBytes(localPath));
 
+			buffer.Write(ref ownerId);
+
 			int vertCount = verts.Count;
 			buffer.Write(ref vertCount);
 			foreach (var vert in verts)
@@ -437,7 +442,7 @@ namespace Thundagun
 		}
 		public override string ToString()
 		{
-			return $"ApplyChangesMeshConnector: {verts.Count} {normals.Count} {tangents.Count} {colors.Count} {boneWeights.Count} {bindPoses.Count} {triangleIndices.Count} {blendShapeFrames.Count} {localPath}";
+			return $"ApplyChangesMeshConnector: {verts.Count} {normals.Count} {tangents.Count} {colors.Count} {boneWeights.Count} {bindPoses.Count} {triangleIndices.Count} {blendShapeFrames.Count} {ownerId}";
 		}
 	}
 }
