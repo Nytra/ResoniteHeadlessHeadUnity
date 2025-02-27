@@ -14,21 +14,21 @@ namespace Thundagun
 	{
 		public string name;
 		public float weight;
-		public List<Vector3> positions;
-		public List<Vector3> normals;
-		public List<Vector3> tangents;
+		public Vector3[] positions;
+		public Vector3[] normals;
+		public Vector3[] tangents;
 	}
 	public class ApplyChangesMeshConnector : IUpdatePacket
 	{
-		public List<Vector3> verts = new();
-		public List<Vector3> normals = new();
-		public List<Vector4> tangents = new();
-		public List<Color> colors = new();
-		public List<BoneWeight> boneWeights = new();
-		public List<Matrix4x4> bindPoses = new();
-		public List<int> triangleIndices = new();
-		public List<BlendShapeFrame> blendShapeFrames = new();
-		public Bounds bounds;
+		public Vector3[] verts;
+		public Vector3[] normals;
+		public Vector4[] tangents;
+		public Color[] colors;
+		public BoneWeight[] boneWeights;
+		public Matrix4x4[] bindPoses;
+		public int[] triangleIndices;
+		public BlendShapeFrame[] blendShapeFrames;
+		public Bounds bounds = new();
 		public string localPath;
 		public ulong ownerId;
 		public void Deserialize(CircularBuffer buffer)
@@ -41,6 +41,7 @@ namespace Thundagun
 
 			int vertCount;
 			buffer.Read(out vertCount);
+			verts = new Vector3[vertCount];
 			for (int i = 0; i < vertCount; i++)
 			{
 				float x;
@@ -49,11 +50,12 @@ namespace Thundagun
 				buffer.Read(out y);
 				float z;
 				buffer.Read(out z);
-				verts.Add(new Vector3(x, y, z));
+				verts[i] = new Vector3(x, y, z);
 			}
 
 			int normalCount;
 			buffer.Read(out normalCount);
+			normals = new Vector3[normalCount];
 			for (int i = 0; i < normalCount; i++)
 			{
 				float x;
@@ -62,11 +64,12 @@ namespace Thundagun
 				buffer.Read(out y);
 				float z;
 				buffer.Read(out z);
-				normals.Add(new Vector3(x, y, z));
+				normals[i] = new Vector3(x, y, z);
 			}
 
 			int tangentCount;
 			buffer.Read(out tangentCount);
+			tangents = new Vector4[tangentCount];
 			for (int i = 0; i < tangentCount; i++)
 			{
 				float x;
@@ -77,11 +80,12 @@ namespace Thundagun
 				buffer.Read(out z);
 				float w;
 				buffer.Read(out w);
-				tangents.Add(new Vector4(x, y, z, w));
+				tangents[i] = new Vector4(x, y, z, w);
 			}
 
 			int colorCount;
 			buffer.Read(out colorCount);
+			colors = new Color[colorCount];
 			for (int i = 0; i < colorCount; i++)
 			{
 				float r;
@@ -92,27 +96,24 @@ namespace Thundagun
 				buffer.Read(out b);
 				float a;
 				buffer.Read(out a);
-				colors.Add(new Color(r, g, b, a));
+				colors[i] = new Color(r, g, b, a);
 			}
 
 			int triangleIndexCount;
 			buffer.Read(out triangleIndexCount);
-			for (int i = 0; i < triangleIndexCount / 3; i++)
+			triangleIndices = new int[triangleIndexCount];
+
+			for (int i = 0; i < triangleIndexCount; i++)
 			{
 				int i0;
 				buffer.Read(out i0);
-				int i1;
-				buffer.Read(out i1);
-				int i2;
-				buffer.Read(out i2);
-				triangleIndices.Add(i0);
-				triangleIndices.Add(i1);
-				triangleIndices.Add(i2);
+				triangleIndices[i] = i0;
 			}
 
-			int boneBindingCount;
-			buffer.Read(out boneBindingCount);
-			for (int i = 0; i < boneBindingCount; i++)
+			int boneWeightCount;
+			buffer.Read(out boneWeightCount);
+			boneWeights = new BoneWeight[boneWeightCount];
+			for (int i = 0; i < boneWeightCount; i++)
 			{
 				int i0;
 				buffer.Read(out i0);
@@ -141,12 +142,13 @@ namespace Thundagun
 				boneWeight.weight1 = w1;
 				boneWeight.weight2 = w2;
 				boneWeight.weight3 = w3;
-				boneWeights.Add(boneWeight);
+				boneWeights[i] = boneWeight;
 			}
 
-			int boneCount;
-			buffer.Read(out boneCount);
-			for (int i = 0; i < boneCount; i++)
+			int bindPosesCount;
+			buffer.Read(out bindPosesCount);
+			bindPoses = new Matrix4x4[bindPosesCount];
+			for (int i = 0; i < bindPosesCount; i++)
 			{
 				float f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15;
 
@@ -169,7 +171,7 @@ namespace Thundagun
 				buffer.Read(out f13);
 				buffer.Read(out f14);
 				buffer.Read(out f15);
-				bindPoses.Add(new Matrix4x4(new Vector4(f0, f4, f8, f12), new Vector4(f1, f5, f9, f13), new Vector4(f2, f6, f10, f14), new Vector4(f3, f7, f11, f15)));
+				bindPoses[i] = new Matrix4x4(new Vector4(f0, f4, f8, f12), new Vector4(f1, f5, f9, f13), new Vector4(f2, f6, f10, f14), new Vector4(f3, f7, f11, f15));
 			}
 
 			float cx, cy, cz;
@@ -186,6 +188,7 @@ namespace Thundagun
 
 			int blendShapeFrameCount;
 			buffer.Read(out blendShapeFrameCount);
+			blendShapeFrames = new BlendShapeFrame[blendShapeFrameCount];
 			for (int i = 0; i < blendShapeFrameCount; i++)
 			{
 				var frame = new BlendShapeFrame();
@@ -202,41 +205,41 @@ namespace Thundagun
 
 				int positionsCount;
 				buffer.Read(out positionsCount);
-				frame.positions = new();
+				frame.positions = new Vector3[positionsCount];
 				for (int i2 = 0; i2 < positionsCount; i2++)
 				{
 					float px, py, pz;
 					buffer.Read(out px);
 					buffer.Read(out py);
 					buffer.Read(out pz);
-					frame.positions.Add(new Vector3(px, py, pz));
+					frame.positions[i2] = new Vector3(px, py, pz);
 				}
 
 				int normalsCount;
 				buffer.Read(out normalsCount);
-				frame.normals = new();
+				frame.normals = new Vector3[normalsCount];
 				for (int i2 = 0; i2 < normalsCount; i2++)
 				{
 					float nx, ny, nz;
 					buffer.Read(out nx);
 					buffer.Read(out ny);
 					buffer.Read(out nz);
-					frame.normals.Add(new Vector3(nx, ny, nz));
+					frame.normals[i2] = new Vector3(nx, ny, nz);
 				}
 
 				int tangentsCount;
 				buffer.Read(out tangentsCount);
-				frame.tangents = new();
+				frame.tangents = new Vector3[normalsCount];
 				for (int i2 = 0; i2 < tangentsCount; i2++)
 				{
 					float tx, ty, tz;
 					buffer.Read(out tx);
 					buffer.Read(out ty);
 					buffer.Read(out tz);
-					frame.tangents.Add(new Vector3(tx, ty, tz));
+					frame.tangents[i2] = new Vector3(tx, ty, tz);
 				}
 
-				blendShapeFrames.Add(frame);
+				blendShapeFrames[i] = frame;
 			}
 		}
 
@@ -246,7 +249,7 @@ namespace Thundagun
 
 			buffer.Write(ref ownerId);
 
-			int vertCount = verts.Count;
+			int vertCount = verts.Length;
 			buffer.Write(ref vertCount);
 			foreach (var vert in verts)
 			{
@@ -258,7 +261,7 @@ namespace Thundagun
 				buffer.Write(ref z);
 			}
 
-			int normalCount = normals.Count;
+			int normalCount = normals.Length;
 			buffer.Write(ref normalCount);
 			foreach (var normal in normals)
 			{
@@ -270,7 +273,7 @@ namespace Thundagun
 				buffer.Write(ref z);
 			}
 
-			int tangentCount = tangents.Count;
+			int tangentCount = tangents.Length;
 			buffer.Write(ref tangentCount);
 			foreach (var tangent in tangents)
 			{
@@ -284,7 +287,7 @@ namespace Thundagun
 				buffer.Write(ref w);
 			}
 
-			int colorCount = colors.Count;
+			int colorCount = colors.Length;
 			buffer.Write(ref colorCount);
 			foreach (var color in colors)
 			{
@@ -298,7 +301,7 @@ namespace Thundagun
 				buffer.Write(ref a);
 			}
 
-			int triangleIndexCount = triangleIndices.Count;
+			int triangleIndexCount = triangleIndices.Length;
 			buffer.Write(ref triangleIndexCount);
 			foreach (var idx in triangleIndices)
 			{
@@ -306,7 +309,7 @@ namespace Thundagun
 				buffer.Write(ref idx2);
 			}
 
-			int boneBindingCount = boneWeights.Count;
+			int boneBindingCount = boneWeights.Length;
 			buffer.Write(ref boneBindingCount);
 			foreach (var boneBinding in boneWeights)
 			{
@@ -329,7 +332,7 @@ namespace Thundagun
 				buffer.Write(ref w3);
 			}
 
-			int bindPoseCount = bindPoses.Count;
+			int bindPoseCount = bindPoses.Length;
 			buffer.Write(ref bindPoseCount);
 			foreach (var bindPose in bindPoses)
 			{
@@ -388,7 +391,7 @@ namespace Thundagun
 			buffer.Write(ref sy);
 			buffer.Write(ref sz);
 
-			int blendShapeFrameCount = blendShapeFrames.Count;
+			int blendShapeFrameCount = blendShapeFrames.Length;
 			buffer.Write(ref blendShapeFrameCount);
 			foreach (var blendShapeFrame in blendShapeFrames)
 			{
@@ -399,7 +402,7 @@ namespace Thundagun
 				float weight = blendShapeFrame.weight;
 				buffer.Write(ref weight);
 
-				int positionsCount = blendShapeFrame.positions.Count;
+				int positionsCount = blendShapeFrame.positions.Length;
 				buffer.Write(ref positionsCount);
 				foreach (var pos in blendShapeFrame.positions)
 				{
@@ -411,7 +414,7 @@ namespace Thundagun
 					buffer.Write(ref pz);
 				}
 
-				int normalsCount = blendShapeFrame.normals.Count;
+				int normalsCount = blendShapeFrame.normals.Length;
 				buffer.Write(ref normalsCount);
 				foreach (var norm in blendShapeFrame.normals)
 				{
@@ -423,7 +426,7 @@ namespace Thundagun
 					buffer.Write(ref nz);
 				}
 
-				int tangentsCount = blendShapeFrame.tangents.Count;
+				int tangentsCount = blendShapeFrame.tangents.Length;
 				buffer.Write(ref tangentsCount);
 				foreach (var tang in blendShapeFrame.tangents)
 				{
@@ -438,7 +441,7 @@ namespace Thundagun
 		}
 		public override string ToString()
 		{
-			return $"ApplyChangesMeshConnector: {verts.Count} {normals.Count} {tangents.Count} {colors.Count} {boneWeights.Count} {bindPoses.Count} {triangleIndices.Count} {blendShapeFrames.Count} {ownerId}";
+			return $"ApplyChangesMeshConnector: {verts.Length} {normals.Length} {tangents.Length} {colors.Length} {boneWeights.Length} {bindPoses.Length} {triangleIndices.Length} {blendShapeFrames.Length} {ownerId}";
 		}
 	}
 }

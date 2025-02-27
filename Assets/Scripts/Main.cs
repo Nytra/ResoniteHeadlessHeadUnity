@@ -581,29 +581,29 @@ namespace Thundagun
 									}
 
 									mesh.Clear();
-									if (deserializedObject.verts.Count > 0)
+									if (deserializedObject.verts.Length > 0)
 										mesh.SetVertices(deserializedObject.verts);
-									mesh.indexFormat = ((((deserializedObject.verts.Count > 0) ? deserializedObject.verts.Count : 0) > 65535) ? IndexFormat.UInt32 : IndexFormat.UInt16);
+									mesh.indexFormat = ((((deserializedObject.verts.Length > 0) ? deserializedObject.verts.Length : 0) > 65535) ? IndexFormat.UInt32 : IndexFormat.UInt16);
 									//mesh.MarkDynamic(); // is this needed?
-									if (deserializedObject.normals.Count > 0)
+									if (deserializedObject.normals.Length > 0)
 										mesh.SetNormals(deserializedObject.normals);
-									if (deserializedObject.tangents.Count > 0)
+									if (deserializedObject.tangents.Length > 0)
 										mesh.SetTangents(deserializedObject.tangents);
-									if (deserializedObject.triangleIndices.Count > 0)
+									if (deserializedObject.triangleIndices.Length > 0)
 										mesh.SetTriangles(deserializedObject.triangleIndices, 0);
-									if (deserializedObject.colors.Count > 0)
+									if (deserializedObject.colors.Length > 0)
 										mesh.SetColors(deserializedObject.colors);
-									if (deserializedObject.boneWeights.Count > 0)
+									if (deserializedObject.boneWeights.Length > 0)
 									{
-										mesh.boneWeights = deserializedObject.boneWeights.ToArray();
+										mesh.boneWeights = deserializedObject.boneWeights;
 									}
-									if (deserializedObject.bindPoses.Count > 0)
+									if (deserializedObject.bindPoses.Length > 0)
 									{
-										mesh.bindposes = deserializedObject.bindPoses.ToArray();
+										mesh.bindposes = deserializedObject.bindPoses;
 									}
 									foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
 									{
-										mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
+										mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions, blendShapeFrame.normals, blendShapeFrame.tangents);
 									}
 
 									mesh.bounds = deserializedObject.bounds;
