@@ -378,7 +378,7 @@ namespace Thundagun
 									{
 										if (world.refIdToSlot.TryGetValue(deserializedObject.slotRefId, out var slot))
 										{
-											var go = slot.GeneratedGameObject;
+											var go = slot.ForceGetGameObject();
 
 											if (!deserializedObject.isSkinned)
 											{
@@ -440,21 +440,25 @@ namespace Thundagun
 												{
 													skinned.material = new Material(shadConn.shader);
 												}
+												Mesh mesh = null;
 												if (AssetManager.OwnerIdToMesh.TryGetValue(deserializedObject.ownerId, out MeshConnector meshConn))
 												{
-													skinned.sharedMesh = meshConn.mesh;
+													//skinned.sharedMesh = meshConn.mesh;
+													mesh = meshConn.mesh;
 												}
 												else
 												{
 													if (AssetManager.LocalPathToMesh.TryGetValue(deserializedObject.meshPath, out meshConn))
 													{
-														skinned.sharedMesh = meshConn.mesh;
+														//skinned.sharedMesh = meshConn.mesh;
+														mesh = meshConn.mesh;
 													}
 													else
 													{
-														skinned.sharedMesh = new();
+														//skinned.sharedMesh = new();
+														mesh = new();
 														meshConn = new();
-														meshConn.mesh = skinned.sharedMesh;
+														meshConn.mesh = mesh;
 														if (deserializedObject.ownerId != default)
 														{
 															AssetManager.OwnerIdToMesh.Add(deserializedObject.ownerId, meshConn);
@@ -466,33 +470,148 @@ namespace Thundagun
 													}
 												}
 
-												// do transforms
-												skinned.bones = new Transform[deserializedObject.boneRefIds.Count];
-												int i = 0;
-												foreach (var refId in deserializedObject.boneRefIds)
+												skinned.sharedMesh = mesh;
+
+												int boneCount = deserializedObject.boneRefIds.Count;
+												int blendShapeCount = deserializedObject.blendShapeWeights.Count;
+												bool isBlendshapeOnly = boneCount == 0 && blendShapeCount > 0;
+
+												Transform GetRootBone()
 												{
-													if (refId == default)
+													Transform bone = null;
+													foreach (var b in deserializedObject.boneRefIds)
 													{
-														skinned.bones[i] = null;
-													}
-													else
-													{
-														if (world.refIdToSlot.TryGetValue(refId, out var boneSlot))
+														if (world.refIdToSlot.TryGetValue(b, out var boneSlot) && (bone == null || bone.IsChildOf(boneSlot.ForceGetGameObject().transform)))
 														{
-															skinned.bones[i] = boneSlot.GeneratedGameObject.transform;
+															bone = boneSlot.ForceGetGameObject().transform;
+														}
+													}
+													return bone;
+												}
+
+												// do bones
+												Transform[] newBonesArr;
+												if (isBlendshapeOnly)
+												{
+													newBonesArr = new Transform[1];
+													newBonesArr[0] = skinned.gameObject.transform;
+												}
+												else
+												{
+													newBonesArr = new Transform[deserializedObject.boneRefIds.Count];
+													int i = 0;
+													foreach (var refId in deserializedObject.boneRefIds)
+													{
+														newBonesArr[i] = skinned.gameObject.transform;
+
+														if (refId != default && world.refIdToSlot.TryGetValue(refId, out var boneSlot))
+														{
+															if (boneSlot.ForceGetGameObject() != null && boneSlot.ForceGetGameObject().transform != null)
+															{
+																newBonesArr[i] = boneSlot.ForceGetGameObject().transform;
+															}
+															else
+															{
+																myLogger.PushMessage("Bone slot has null GameObject or transform, using fallback");
+															}
 														}
 														else
 														{
-															myLogger.PushMessage("Failed to get bone transform for skinned renderer");
+															myLogger.PushMessage(refId == default ?
+																"Default refId, using fallback bone transform" :
+																"Failed to get bone transform for skinned renderer");
 														}
+
+														///
+
+														//if (refId == default)
+														//{
+														//	skinned.bones[i] = skinned.gameObject.transform;
+														//	myLogger.PushMessage("Using fallback bone transform");
+														//}
+														//else
+														//{
+														//	if (world.refIdToSlot.TryGetValue(refId, out var boneSlot))
+														//	{
+														//		skinned.bones[i] = boneSlot.GeneratedGameObject.transform;
+														//	}
+														//	else
+														//	{
+														//		skinned.bones[i] = skinned.gameObject.transform;
+														//		myLogger.PushMessage("Failed to get bone transform for skinned renderer");
+														//	}
+														//}
+
+														if (newBonesArr[i] == null)
+														{
+															myLogger.PushMessage("CRITICAL: Bone still null after assignment, using fallback");
+															newBonesArr[i] = skinned.gameObject.transform;
+														}
+
+														i++;
 													}
-													i++;
+												}
+
+												skinned.bones = newBonesArr;
+
+												//skinned.updateWhenOffscreen = true; // needed?
+
+												skinned.rootBone = isBlendshapeOnly ? skinned.gameObject.transform : GetRootBone();
+
+												//myLogger.PushMessage($"GetRootBoneNull? {GetRootBone() == null}");
+
+												// Validate the entire bones array as a final check
+												for (int j = 0; j < skinned.bones.Length; j++)
+												{
+													if (skinned.bones[j] == null)
+													{
+														myLogger.PushMessage($"CRITICAL: Bone at index {j} is null after setup complete");
+														skinned.bones[j] = skinned.rootBone;
+													}
 												}
 
 												for (int i2 = 0; i2 < deserializedObject.blendShapeWeights.Count; i2++)
 												{
 													skinned.SetBlendShapeWeight(i2, deserializedObject.blendShapeWeights[i2]);
 												}
+
+												//skinned.forceMatrixRecalculationPerRender = true;
+												
+												if (skinned.sharedMesh.bounds.size.magnitude < 0.01f)
+												{
+													myLogger.PushMessage("Mesh bounds are very small, may be culled.");
+													skinned.sharedMesh.RecalculateBounds();
+												}
+
+												myLogger.PushMessage($"Mesh vertices: {skinned.sharedMesh.vertexCount}, Has bones: {skinned.bones.Length > 0} Valid bones: {skinned.bones.All(b => b != null)} rootBoneNull? {skinned.rootBone == null}");
+												myLogger.PushMessage($"bone count {skinned.bones.Length} bindpose count {skinned.sharedMesh.bindposeCount} weight count {skinned.sharedMesh.boneWeights.Length}");
+
+												bool validHierarchy = true;
+												foreach (Transform bone in skinned.bones)
+												{
+													if (bone is null)
+													{
+														myLogger.PushMessage("A bone is null!");
+														validHierarchy = false;
+														break;
+													}
+													//if (!bone.IsChildOf(skinned.rootBone) && bone != skinned.rootBone)
+													//{
+														//myLogger.PushMessage("A bone is not a child of the root bone!");
+														//validHierarchy = false;
+														//break;
+													//}
+												}
+												if (!validHierarchy)
+												{
+													myLogger.PushMessage("Invalid bones hierarchy!");
+												}
+												//else
+												//{
+													//myLogger.PushMessage("Bone hierarchy is valid!");
+												//}
+
+												//skinned.ResetBounds();
 											}
 										}
 									}
@@ -603,23 +722,56 @@ namespace Thundagun
 										mesh.SetTriangles(deserializedObject.triangleIndices, 0);
 									if (deserializedObject.colors.Length > 0)
 										mesh.SetColors(deserializedObject.colors);
-									if (deserializedObject.boneWeights.Length > 0)
+
+									bool isBlendshapeOnly = deserializedObject.blendShapeFrames.Length > 0 && deserializedObject.boneWeights.Length == 0;
+
+									if (isBlendshapeOnly)
 									{
-										mesh.boneWeights = deserializedObject.boneWeights;
+										mesh.bindposes = new Matrix4x4[1];
 									}
-									if (deserializedObject.bindPoses.Length > 0)
+									else
 									{
-										mesh.bindposes = deserializedObject.bindPoses;
+										mesh.boneWeights = new BoneWeight[deserializedObject.bindPoses.Length > 0 ? deserializedObject.verts.Length : 0];
 									}
+
+									if (isBlendshapeOnly)
+									{
+										mesh.bindposes[0] = Matrix4x4.identity;
+										BoneWeight boneWeight = default(BoneWeight);
+										boneWeight.boneIndex0 = 0;
+										boneWeight.boneIndex1 = 0;
+										boneWeight.boneIndex2 = 0;
+										boneWeight.boneIndex3 = 0;
+										boneWeight.weight0 = 1f;
+										boneWeight.weight1 = 0f;
+										boneWeight.weight2 = 0f;
+										boneWeight.weight3 = 0f;
+										for (int l = 0; l < deserializedObject.verts.Length; l++)
+										{
+											mesh.boneWeights[l] = boneWeight;
+										}
+									}
+									else
+									{
+										if (deserializedObject.bindPoses.Length > 0)
+										{
+											mesh.bindposes = deserializedObject.bindPoses;
+											mesh.boneWeights = deserializedObject.boneWeights;
+										}
+									}
+									
 									foreach (var blendShapeFrame in deserializedObject.blendShapeFrames)
 									{
 										mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions, blendShapeFrame.normals, blendShapeFrame.tangents);
 									}
 
+									if (deserializedObject.verts.Length > 0)
+										mesh.SetVertices(deserializedObject.verts);
+
 									mesh.bounds = deserializedObject.bounds;
 
-									//if (deserializedObject.verts.Count > 0)
-										//mesh.RecalculateBounds();
+									//if (deserializedObject.verts.Length > 0)
+										//mesh.RecalculateBounds(); // needed?
 
 									mesh.UploadMeshData(false);
 								});
