@@ -80,7 +80,24 @@ namespace Thundagun
 					myLogger.PushMessage(string.Join(',', args));
 				}
 
-				syncBuffer = new BufferReadWrite($"SyncBuffer{DateTime.Now.Minute}");
+				try
+				{
+					syncBuffer = new BufferReadWrite($"SyncBuffer{DateTime.Now.Minute}");
+				}
+				catch (Exception e)
+				{
+					try
+					{
+						int min = DateTime.Now.Minute;
+						if (min - 1 < 0) min = 59;
+						else min -= 1;
+						syncBuffer = new BufferReadWrite($"SyncBuffer{min}"); // try connecting to the previous minute's syncbuffer, in case the client opened late
+					}
+					catch (Exception ex)
+					{
+						myLogger.PushMessage("Could not open sync buffer.");
+					}
+				}
 
 				myLogger.PushMessage("SyncBuffer opened.");
 
@@ -508,10 +525,10 @@ namespace Thundagun
 													{
 														try
 														{
-															ShaderConnector shad = new();
-															shad.shader = shaderRequest.asset as Shader;
 															if (!AssetManager.LocalPathToShader.ContainsKey(deserializedObject.LocalPath))
 															{
+																ShaderConnector shad = new();
+																shad.shader = shaderRequest.asset as Shader;
 																AssetManager.LocalPathToShader.Add(deserializedObject.LocalPath, shad);
 																myLogger.PushMessage($"Successfully loaded a shader from the bundle {deserializedObject.File}");
 															}
