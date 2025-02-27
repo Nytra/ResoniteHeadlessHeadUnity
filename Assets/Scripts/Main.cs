@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using SharedMemory;
 using TMPro;
 using UnityEngine.Rendering;
+using System.Linq;
 
 namespace Thundagun
 {
@@ -29,7 +30,7 @@ namespace Thundagun
 
 	public enum PacketTypes
 	{
-		Sync,
+		None,
 		ApplyChangesSlot,
 		DestroySlot,
 		InitializeWorld,
@@ -725,18 +726,24 @@ namespace Thundagun
 
 									bool isBlendshapeOnly = deserializedObject.blendShapeFrames.Length > 0 && deserializedObject.boneWeights.Length == 0;
 
+									Matrix4x4[] newBindPoseArr = null;
+									BoneWeight[] newBoneWeightArr = null;
 									if (isBlendshapeOnly)
 									{
-										mesh.bindposes = new Matrix4x4[1];
+										//mesh.bindposes = new Matrix4x4[1];
+										newBindPoseArr = new Matrix4x4[1];
+										newBoneWeightArr = new BoneWeight[deserializedObject.verts.Length];
 									}
 									else
 									{
-										mesh.boneWeights = new BoneWeight[deserializedObject.bindPoses.Length > 0 ? deserializedObject.verts.Length : 0];
+										//mesh.boneWeights = new BoneWeight[deserializedObject.bindPoses.Length > 0 ? deserializedObject.verts.Length : 0];
+										newBoneWeightArr = new BoneWeight[deserializedObject.bindPoses.Length > 0 ? deserializedObject.verts.Length : 0]; // needed?
+										newBindPoseArr = new Matrix4x4[deserializedObject.boneWeights.Length]; // or Bone Count length?
 									}
 
 									if (isBlendshapeOnly)
 									{
-										mesh.bindposes[0] = Matrix4x4.identity;
+										newBindPoseArr[0] = Matrix4x4.identity;
 										BoneWeight boneWeight = default(BoneWeight);
 										boneWeight.boneIndex0 = 0;
 										boneWeight.boneIndex1 = 0;
@@ -748,8 +755,10 @@ namespace Thundagun
 										boneWeight.weight3 = 0f;
 										for (int l = 0; l < deserializedObject.verts.Length; l++)
 										{
-											mesh.boneWeights[l] = boneWeight;
+											newBoneWeightArr[l] = boneWeight;
 										}
+										mesh.boneWeights = newBoneWeightArr;
+										mesh.bindposes = newBindPoseArr;
 									}
 									else
 									{
@@ -765,8 +774,8 @@ namespace Thundagun
 										mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions, blendShapeFrame.normals, blendShapeFrame.tangents);
 									}
 
-									if (deserializedObject.verts.Length > 0)
-										mesh.SetVertices(deserializedObject.verts);
+									//if (deserializedObject.verts.Length > 0) // needed?
+										//mesh.SetVertices(deserializedObject.verts);
 
 									mesh.bounds = deserializedObject.bounds;
 
