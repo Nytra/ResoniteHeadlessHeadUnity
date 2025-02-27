@@ -30,7 +30,7 @@ namespace Thundagun
 
 	public enum PacketTypes
 	{
-		None,
+		None, // 0 means no packet
 		ApplyChangesSlot,
 		DestroySlot,
 		InitializeWorld,
