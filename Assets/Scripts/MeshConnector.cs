@@ -203,7 +203,6 @@ namespace Thundagun
 				int positionsCount;
 				buffer.Read(out positionsCount);
 				frame.positions = new();
-				//var positions = new List<Vector3>();
 				for (int i2 = 0; i2 < positionsCount; i2++)
 				{
 					float px, py, pz;
@@ -216,7 +215,6 @@ namespace Thundagun
 				int normalsCount;
 				buffer.Read(out normalsCount);
 				frame.normals = new();
-				//var normals = new float[normalsCount];
 				for (int i2 = 0; i2 < normalsCount; i2++)
 				{
 					float nx, ny, nz;
@@ -229,7 +227,6 @@ namespace Thundagun
 				int tangentsCount;
 				buffer.Read(out tangentsCount);
 				frame.tangents = new();
-				//var tangents = new float[tangentsCount];
 				for (int i2 = 0; i2 < tangentsCount; i2++)
 				{
 					float tx, ty, tz;
@@ -404,8 +401,6 @@ namespace Thundagun
 
 				int positionsCount = blendShapeFrame.positions.Count;
 				buffer.Write(ref positionsCount);
-				//var positions = new float[positionsCount];
-
 				foreach (var pos in blendShapeFrame.positions)
 				{
 					float px = pos.x;
@@ -418,8 +413,6 @@ namespace Thundagun
 
 				int normalsCount = blendShapeFrame.normals.Count;
 				buffer.Write(ref normalsCount);
-				//var normals = new float[normalsCount];
-
 				foreach (var norm in blendShapeFrame.normals)
 				{
 					float nx = norm.x;
@@ -432,8 +425,6 @@ namespace Thundagun
 
 				int tangentsCount = blendShapeFrame.tangents.Count;
 				buffer.Write(ref tangentsCount);
-				//var tangents = new float[tangentsCount];
-
 				foreach (var tang in blendShapeFrame.tangents)
 				{
 					float tx = tang.x;

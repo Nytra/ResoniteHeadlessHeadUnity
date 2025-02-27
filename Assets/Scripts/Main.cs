@@ -114,21 +114,12 @@ namespace Thundagun
 
 				Task.Run(async () =>
 				{
-					//while (buffer.NodeCount > 0)
-					//{
-					//	var bytes = new byte[128];
-					//	buffer.Read(bytes);
-					//}
 					while (true)
 					{
 						buffer.Read(out num);
 
 						if (num != 0)
 						{
-							//RunSynchronously(() =>
-							//{ 
-							//	myLogger.PushMessage(num.ToString());
-							//});
 							if (num == (int)PacketTypes.ApplyChangesSlot)
 							{
 								ApplyChangesSlotConnector deserializedObject = new();
@@ -178,13 +169,11 @@ namespace Thundagun
 											var text = slotConn.GeneratedGameObject.GetComponentInChildren<TextMeshPro>(includeInactive: true);
 											if ((deserializedObject.ShouldRender || slotConn.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
 											{
-												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = true;
 												text.text = deserializedObject.SlotName;
 												text.gameObject.SetActive(true);
 											}
 											else
 											{
-												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = false;
 												text.text = "";
 											}
 
@@ -240,13 +229,11 @@ namespace Thundagun
 											var text = go.GetComponentInChildren<TextMeshPro>(includeInactive: true);
 											if ((deserializedObject.ShouldRender || newSc.ForceRender || deserializedObject.IsUserRootSlot || deserializedObject.IsRootSlot) && deserializedObject.Active)
 											{
-												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = true;
 												text.text = deserializedObject.SlotName;
 												text.gameObject.SetActive(true);
 											}
 											else
 											{
-												//text.gameObject.transform.parent.gameObject.GetComponent<LookAtConstraint>().enabled = false;
 												text.text = "";
 											}
 
@@ -467,11 +454,6 @@ namespace Thundagun
 															AssetManager.LocalPathToMesh.Add(deserializedObject.meshPath, meshConn);
 														}
 													}
-
-													//skinned.sharedMesh = new();
-													//meshConn = new();
-													//meshConn.mesh = skinned.sharedMesh;
-													//AssetManager.OwnerIdToMesh.Add(deserializedObject.ownerId, meshConn);
 												}
 
 												// do transforms
@@ -651,7 +633,6 @@ namespace Thundagun
 				float deltaX = Input.GetAxis("Mouse X") * camSpeed;
 				float deltaY = Input.GetAxis("Mouse Y") * camSpeed;
 				camera1.transform.RotateAround(camera1.transform.position, Vector3.up, deltaX);
-				//camera1.transform.RotateAround(camera1.transform.position, camera1.transform.right, -deltaY);
 
 				// Calculate new vertical angle and clamp it
 				currentVerticalAngle -= deltaY; // Subtract because negative deltaY = looking up
