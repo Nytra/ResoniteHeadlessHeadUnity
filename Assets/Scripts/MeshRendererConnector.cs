@@ -18,6 +18,7 @@ namespace Thundagun
 		public bool isSkinned;
 		public string meshPath;
 		public ulong ownerId;
+		public List<float> blendShapeWeights = new();
 
 		//public List<Vector3> verts = new();
 		//public List<Vector3> normals = new();
@@ -53,6 +54,15 @@ namespace Thundagun
 					ulong refId;
 					buffer.Read(out refId);
 					boneRefIds.Add(refId);
+				}
+
+				int blendShapeWeightCount;
+				buffer.Read(out blendShapeWeightCount);
+				for (int i = 0; i < blendShapeWeightCount; i++)
+				{
+					float weight;
+					buffer.Read(out weight);
+					blendShapeWeights.Add(weight);
 				}
 			}
 
@@ -275,6 +285,14 @@ namespace Thundagun
 				{
 					ulong refId = boneRefId;
 					buffer.Write(ref refId);
+				}
+
+				int blendShapeWeightCount = blendShapeWeights.Count;
+				buffer.Write(ref blendShapeWeightCount);
+				foreach (var blendShapeWeight in blendShapeWeights)
+				{
+					float weight = blendShapeWeight;
+					buffer.Write(ref weight);
 				}
 			}
 

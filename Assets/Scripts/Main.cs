@@ -431,7 +431,6 @@ namespace Thundagun
 											}
 											else
 											{
-												return;
 												SkinnedMeshRenderer skinned = null;
 												skinned = go.GetComponent<SkinnedMeshRenderer>();
 												if (skinned == null)
@@ -480,15 +479,27 @@ namespace Thundagun
 												int i = 0;
 												foreach (var refId in deserializedObject.boneRefIds)
 												{
-													if (world.refIdToSlot.TryGetValue(refId, out var boneSlot))
+													if (refId == default)
 													{
-														skinned.bones[i] = boneSlot.RequestGameObject().transform;
+														skinned.bones[i] = null;
 													}
 													else
 													{
-														myLogger.PushMessage("Failed to get bone transform for skinned renderer");
+														if (world.refIdToSlot.TryGetValue(refId, out var boneSlot))
+														{
+															skinned.bones[i] = boneSlot.GeneratedGameObject.transform;
+														}
+														else
+														{
+															myLogger.PushMessage("Failed to get bone transform for skinned renderer");
+														}
 													}
 													i++;
+												}
+
+												for (int i2 = 0; i2 < deserializedObject.blendShapeWeights.Count; i2++)
+												{
+													skinned.SetBlendShapeWeight(i2, deserializedObject.blendShapeWeights[i2]);
 												}
 											}
 										}
@@ -613,10 +624,10 @@ namespace Thundagun
 										mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions.ToArray(), blendShapeFrame.normals.ToArray(), blendShapeFrame.tangents.ToArray());
 									}
 
-									//mesh.bounds = deserializedObject.bounds;
+									mesh.bounds = deserializedObject.bounds;
 
-									if (deserializedObject.verts.Count > 0)
-										mesh.RecalculateBounds();
+									//if (deserializedObject.verts.Count > 0)
+										//mesh.RecalculateBounds();
 
 									mesh.UploadMeshData(false);
 								});

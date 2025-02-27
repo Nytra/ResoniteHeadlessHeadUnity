@@ -184,58 +184,63 @@ namespace Thundagun
 			buffer.Read(out sz);
 			bounds.size = new Vector3(sx, sy, sz);
 
-			//int blendShapeFrameCount;
-			//buffer.Read(out blendShapeFrameCount);
-			//for (int i = 0; i < blendShapeFrameCount; i++)
-			//{
-			//	var frame = new BlendShapeFrame();
+			int blendShapeFrameCount;
+			buffer.Read(out blendShapeFrameCount);
+			for (int i = 0; i < blendShapeFrameCount; i++)
+			{
+				var frame = new BlendShapeFrame();
 
-			//	string name;
-			//	var bytes3 = new byte[Constants.MAX_STRING_LENGTH];
-			//	buffer.Read(bytes3);
-			//	name = Encoding.UTF8.GetString(bytes3);
-			//	frame.name = name;
+				string name;
+				var bytes3 = new byte[Constants.MAX_STRING_LENGTH];
+				buffer.Read(bytes3);
+				name = Encoding.UTF8.GetString(bytes3);
+				frame.name = name;
 
-			//	float weight;
-			//	buffer.Read(out weight);
-			//	frame.weight = weight;
+				float weight;
+				buffer.Read(out weight);
+				frame.weight = weight;
 
-			//	int positionsCount;
-			//	buffer.Read(out positionsCount);
-			//	//var positions = new List<Vector3>();
-			//	for (int i2 = 0; i2 < positionsCount / 3; i2 ++)
-			//	{
-			//		float px, py, pz;
-			//		buffer.Read(out px);
-			//		buffer.Read(out py);
-			//		buffer.Read(out pz);
-			//		frame.positions.Add(new Vector3(px, py, pz));
-			//	}
+				int positionsCount;
+				buffer.Read(out positionsCount);
+				frame.positions = new();
+				//var positions = new List<Vector3>();
+				for (int i2 = 0; i2 < positionsCount; i2++)
+				{
+					float px, py, pz;
+					buffer.Read(out px);
+					buffer.Read(out py);
+					buffer.Read(out pz);
+					frame.positions.Add(new Vector3(px, py, pz));
+				}
 
-			//	int normalsCount;
-			//	buffer.Read(out normalsCount);
-			//	//var normals = new float[normalsCount];
-			//	for (int i2 = 0; i2 < normalsCount / 3; i2 ++)
-			//	{
-			//		float nx, ny, nz;
-			//		buffer.Read(out nx);
-			//		buffer.Read(out ny);
-			//		buffer.Read(out nz);
-			//		frame.normals.Add(new Vector3(nx, ny, nz));
-			//	}
+				int normalsCount;
+				buffer.Read(out normalsCount);
+				frame.normals = new();
+				//var normals = new float[normalsCount];
+				for (int i2 = 0; i2 < normalsCount; i2++)
+				{
+					float nx, ny, nz;
+					buffer.Read(out nx);
+					buffer.Read(out ny);
+					buffer.Read(out nz);
+					frame.normals.Add(new Vector3(nx, ny, nz));
+				}
 
-			//	int tangentsCount;
-			//	buffer.Read(out tangentsCount);
-			//	//var tangents = new float[tangentsCount];
-			//	for (int i2 = 0; i2 < tangentsCount / 3; i2 ++)
-			//	{
-			//		float tx, ty, tz;
-			//		buffer.Read(out tx);
-			//		buffer.Read(out ty);
-			//		buffer.Read(out tz);
-			//		frame.tangents.Add(new Vector3(tx, ty, tz));
-			//	}
-			//}
+				int tangentsCount;
+				buffer.Read(out tangentsCount);
+				frame.tangents = new();
+				//var tangents = new float[tangentsCount];
+				for (int i2 = 0; i2 < tangentsCount; i2++)
+				{
+					float tx, ty, tz;
+					buffer.Read(out tx);
+					buffer.Read(out ty);
+					buffer.Read(out tz);
+					frame.tangents.Add(new Vector3(tx, ty, tz));
+				}
+
+				blendShapeFrames.Add(frame);
+			}
 		}
 
 		public void Serialize(CircularBuffer buffer)
@@ -386,59 +391,59 @@ namespace Thundagun
 			buffer.Write(ref sy);
 			buffer.Write(ref sz);
 
-			//int blendShapeFrameCount = blendShapeFrames.Count;
-			//buffer.Write(ref blendShapeFrameCount);
-			//foreach (var blendShapeFrame in blendShapeFrames)
-			//{
-			//	string name = blendShapeFrame.name;
-			//	name = name.Substring(0, Math.Min(name.Length, Constants.MAX_STRING_LENGTH));
-			//	buffer.Write(Encoding.UTF8.GetBytes(name));
+			int blendShapeFrameCount = blendShapeFrames.Count;
+			buffer.Write(ref blendShapeFrameCount);
+			foreach (var blendShapeFrame in blendShapeFrames)
+			{
+				string name = blendShapeFrame.name;
+				name = name.Substring(0, Math.Min(name.Length, Constants.MAX_STRING_LENGTH));
+				buffer.Write(Encoding.UTF8.GetBytes(name));
 
-			//	float weight = blendShapeFrame.weight;
-			//	buffer.Write(ref weight);
+				float weight = blendShapeFrame.weight;
+				buffer.Write(ref weight);
 
-			//	int positionsCount = blendShapeFrame.positions.Count;
-			//	buffer.Write(ref positionsCount);
-			//	//var positions = new float[positionsCount];
+				int positionsCount = blendShapeFrame.positions.Count;
+				buffer.Write(ref positionsCount);
+				//var positions = new float[positionsCount];
 
-			//	foreach (var pos in blendShapeFrame.positions)
-			//	{
-			//		float px = pos.x;
-			//		float py = pos.y;
-			//		float pz = pos.z;
-			//		buffer.Write(ref px);
-			//		buffer.Write(ref py);
-			//		buffer.Write(ref pz);
-			//	}
+				foreach (var pos in blendShapeFrame.positions)
+				{
+					float px = pos.x;
+					float py = pos.y;
+					float pz = pos.z;
+					buffer.Write(ref px);
+					buffer.Write(ref py);
+					buffer.Write(ref pz);
+				}
 
-			//	int normalsCount = blendShapeFrame.normals.Count;
-			//	buffer.Write(ref normalsCount);
-			//	//var normals = new float[normalsCount];
+				int normalsCount = blendShapeFrame.normals.Count;
+				buffer.Write(ref normalsCount);
+				//var normals = new float[normalsCount];
 
-			//	foreach (var norm in blendShapeFrame.normals)
-			//	{
-			//		float nx = norm.x;
-			//		float ny = norm.y;
-			//		float nz = norm.z;
-			//		buffer.Write(ref nx);
-			//		buffer.Write(ref ny);
-			//		buffer.Write(ref nz);
-			//	}
+				foreach (var norm in blendShapeFrame.normals)
+				{
+					float nx = norm.x;
+					float ny = norm.y;
+					float nz = norm.z;
+					buffer.Write(ref nx);
+					buffer.Write(ref ny);
+					buffer.Write(ref nz);
+				}
 
-			//	int tangentsCount = blendShapeFrame.tangents.Count;
-			//	buffer.Write(ref tangentsCount);
-			//	//var tangents = new float[tangentsCount];
+				int tangentsCount = blendShapeFrame.tangents.Count;
+				buffer.Write(ref tangentsCount);
+				//var tangents = new float[tangentsCount];
 
-			//	foreach (var tang in blendShapeFrame.tangents)
-			//	{
-			//		float tx = tang.x;
-			//		float ty = tang.y;
-			//		float tz = tang.z;
-			//		buffer.Write(ref tx);
-			//		buffer.Write(ref ty);
-			//		buffer.Write(ref tz);
-			//	}
-			//}
+				foreach (var tang in blendShapeFrame.tangents)
+				{
+					float tx = tang.x;
+					float ty = tang.y;
+					float tz = tang.z;
+					buffer.Write(ref tx);
+					buffer.Write(ref ty);
+					buffer.Write(ref tz);
+				}
+			}
 		}
 		public override string ToString()
 		{
