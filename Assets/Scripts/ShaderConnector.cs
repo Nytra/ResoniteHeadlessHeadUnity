@@ -4,6 +4,7 @@ using UnityEngine;
 using SharedMemory;
 using System.Text;
 using System.Linq;
+using UnityEngine.UIElements;
 
 namespace Thundagun
 {
@@ -46,9 +47,9 @@ namespace Thundagun
 
 									callback?.Invoke();
 
-									ShaderLoadedCallback callback2 = new();
-									callback2.shaderPath = FilePath;
-									Main.QueuePacket(callback2);
+									//ShaderLoadedCallback callback2 = new();
+									//callback2.shaderPath = FilePath;
+									//Main.QueuePacket(callback2);
 
 									// keep it outside of a coroutine
 									Main.RunSynchronously(() =>
@@ -89,6 +90,7 @@ namespace Thundagun
 												//	matConn2.mat.shader = matConn.shader;
 												//}
 												matConn2.mat = matConn.mat;
+												matConn2.shader = matConn.shader;
 												foreach (var renderer in matConn2.renderers)
 												{
 													//if (renderer.sharedMaterial.shader == shad.shader) continue;
@@ -100,20 +102,29 @@ namespace Thundagun
 													//matConn.mat = renderer.sharedMaterial;
 												}
 											}
-											else if (matConn2.shaderFilePath == matConn.shaderFilePath)
-											{
-												matConn2.mat = new Material(shad.shader);
-												foreach (var renderer in matConn2.renderers)
-												{
-													//if (renderer.sharedMaterial.shader == shad.shader) continue;
-													//Main.myLoggerStatic.PushMessage($"Applying shader retroactively to a renderer with name: {renderer.gameObject.name}");
-													renderer.sharedMaterial = matConn2.mat;
-													renderer.gameObject.name += " HAS NEW MAT";
-													//renderer.sharedMaterial = mat;
-													//matConn.shader = shad.shader;
-													//matConn.mat = renderer.sharedMaterial;
-												}
-											}
+											//else if (matConn2.shaderFilePath == matConn.shaderFilePath)
+											//{
+												//matConn2.mat = matConn.mat;
+												//foreach (var rend in  matConn2.renderers)
+												//{
+													//rend.sharedMaterial = matConn2.mat;
+													//rend.gameObject.name += " HAS NEW MAT";
+												//}
+											//}
+											//else if (matConn2.shaderFilePath == matConn.shaderFilePath)
+											//{
+											//	matConn2.mat = new Material(shad.shader);
+											//	foreach (var renderer in matConn2.renderers)
+											//	{
+											//		//if (renderer.sharedMaterial.shader == shad.shader) continue;
+											//		//Main.myLoggerStatic.PushMessage($"Applying shader retroactively to a renderer with name: {renderer.gameObject.name}");
+											//		renderer.sharedMaterial = matConn2.mat;
+											//		renderer.gameObject.name += " HAS NEW MAT";
+											//		//renderer.sharedMaterial = mat;
+											//		//matConn.shader = shad.shader;
+											//		//matConn.mat = renderer.sharedMaterial;
+											//	}
+											//}
 										}
 
 										//foreach (var rend in AssetManager.Renderers.Values)
