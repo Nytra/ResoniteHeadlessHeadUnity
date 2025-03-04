@@ -14,6 +14,7 @@ namespace Thundagun
 		public Material mat;
 		public string shaderFilePath;
 		public List<MeshRenderer> renderers = new();
+		public List<SkinnedMeshRenderer> skinnedRenderers = new();
 		public Shader shader;
 		public ulong ownerId;
 		public static HashSet<string> TriggeredLoaded = new();
@@ -134,6 +135,10 @@ namespace Thundagun
 					mat = new Material(shadConn.shader);
 					shader = shadConn.shader;
 					foreach (var rend in renderers)
+					{
+						rend.sharedMaterial = mat;
+					}
+					foreach (var rend in skinnedRenderers)
 					{
 						rend.sharedMaterial = mat;
 					}

@@ -101,7 +101,19 @@ namespace Thundagun
 													//matConn.shader = shad.shader;
 													//matConn.mat = renderer.sharedMaterial;
 												}
+												foreach (var renderer in matConn2.skinnedRenderers)
+												{
+													//if (renderer.sharedMaterial.shader == shad.shader) continue;
+													//Main.myLoggerStatic.PushMessage($"Applying shader retroactively to a renderer with name: {renderer.gameObject.name}");
+													renderer.sharedMaterial = matConn2.mat;
+													renderer.gameObject.name += " HAS MAT";
+													//renderer.sharedMaterial = mat;
+													//matConn.shader = shad.shader;
+													//matConn.mat = renderer.sharedMaterial;
+												}
 											}
+
+											matConn2.ApplyChanges(new System.Collections.Generic.Queue<MaterialAction>());
 											//else if (matConn2.shaderFilePath == matConn.shaderFilePath)
 											//{
 												//matConn2.mat = matConn.mat;
