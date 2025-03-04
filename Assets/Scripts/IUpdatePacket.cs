@@ -1,8 +1,8 @@
 using SharedMemory;
-using System.IO;
 
 public interface IUpdatePacket
 {
+	public int Id {get;}
 	public void Serialize(CircularBuffer buffer);
 	public void Deserialize(CircularBuffer buffer);
 }

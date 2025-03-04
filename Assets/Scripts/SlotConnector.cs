@@ -1,12 +1,8 @@
 using SharedMemory;
-using System.IO;
 using UnityEngine;
 using System.Text;
-using UnityEditor;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Linq;
-using TMPro;
 using System.Collections.Generic;
 
 namespace Thundagun
@@ -183,6 +179,8 @@ namespace Thundagun
 		public bool ForceRender;
 		public bool IsLocalElement;
 
+		public int Id => (int)PacketTypes.ApplyChangesSlot;
+
 		public void Serialize(CircularBuffer buffer)
 		{
 			buffer.Write(ref Active);
@@ -294,6 +292,7 @@ namespace Thundagun
 		public bool DestroyingWorld;
 		public long WorldId;
 
+		public int Id => (int)PacketTypes.DestroySlot;
 		public void Serialize(CircularBuffer buffer)
 		{
 			buffer.Write(ref RefID);

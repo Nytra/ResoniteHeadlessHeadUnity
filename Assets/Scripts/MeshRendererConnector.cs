@@ -1,24 +1,31 @@
 using SharedMemory;
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine;
 
 namespace Thundagun
 {
 	public class MeshRendererConnector
 	{
-		public Mesh mesh;
+		//public Mesh mesh;
+		//public bool nameChanged;
+		//public MeshRenderer renderer;
+		//public ulong matId;
+		//public string shaderPath;
 	}
 	public class ApplyChangesMeshRendererConnector : IUpdatePacket
 	{
 		public List<ulong> boneRefIds = new();
 		public ulong slotRefId;
 		public long worldId;
-		public string shaderPath;
+		public string shaderFilePath;
+		public string shaderLocalPath;
+		public ulong matCompId;
 		public bool isSkinned;
 		public string meshPath;
-		public ulong ownerId;
+		public ulong meshCompId;
 		public List<float> blendShapeWeights = new();
+
+		public int Id => (int)PacketTypes.ApplyChangesMeshRenderer;
 
 		public void Deserialize(CircularBuffer buffer)
 		{
@@ -28,13 +35,19 @@ namespace Thundagun
 
 			var bytes2 = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes2);
-			shaderPath = Encoding.UTF8.GetString(bytes2);
+			shaderFilePath = Encoding.UTF8.GetString(bytes2);
+
+			var bytes4 = new byte[Constants.MAX_STRING_LENGTH];
+			buffer.Read(bytes4);
+			shaderLocalPath = Encoding.UTF8.GetString(bytes4);
+
+			buffer.Read(out matCompId);
 
 			var bytes3 = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes3);
 			meshPath = Encoding.UTF8.GetString(bytes3);
 
-			buffer.Read(out ownerId);
+			buffer.Read(out meshCompId);
 
 			if (isSkinned)
 			{
@@ -64,11 +77,15 @@ namespace Thundagun
 			buffer.Write(ref worldId);
 			buffer.Write(ref isSkinned);
 
-			buffer.Write(Encoding.UTF8.GetBytes(shaderPath));
+			buffer.Write(Encoding.UTF8.GetBytes(shaderFilePath));
+
+			buffer.Write(Encoding.UTF8.GetBytes(shaderLocalPath));
+
+			buffer.Write(ref matCompId);
 
 			buffer.Write(Encoding.UTF8.GetBytes(meshPath));
 
-			buffer.Write(ref ownerId);
+			buffer.Write(ref meshCompId);
 
 			if (isSkinned)
 			{
@@ -91,12 +108,13 @@ namespace Thundagun
 		}
 		public override string ToString()
 		{
-			return $"ApplyChangesMeshRendererConnector: {isSkinned} {shaderPath} {ownerId}";
+			return $"ApplyChangesMeshRendererConnectorowo: {isSkinned}, {matCompId}, {meshCompId}, {shaderLocalPath}, {meshPath}";
 		}
 	}
 
 	public class DestroyMeshRendererConnector : IUpdatePacket
 	{
+		public int Id => (int)PacketTypes.DestroyMeshRenderer;
 		public DestroyMeshRendererConnector(MeshRendererConnector owner)
 		{
 		}

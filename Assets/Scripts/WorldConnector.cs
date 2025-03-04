@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.IO;
 using System.Collections.Generic;
 using SharedMemory;
 
@@ -30,6 +29,8 @@ namespace Thundagun
 	public class InitializeWorldConnector : IUpdatePacket
 	{
 		public long WorldId;
+
+		public int Id => (int)PacketTypes.InitializeWorld;
 		public void Serialize(CircularBuffer buffer)
 		{
 			buffer.Write(ref WorldId);
@@ -48,6 +49,8 @@ namespace Thundagun
 	{
 		public int Focus;
 		public long WorldId;
+
+		public int Id => (int)PacketTypes.ChangeFocusWorld;
 
 		public void Serialize(CircularBuffer buffer)
 		{
@@ -68,6 +71,9 @@ namespace Thundagun
 	public class DestroyWorldConnector : IUpdatePacket
 	{
 		public long WorldId;
+
+		public int Id => (int)PacketTypes.DestroyWorld;
+
 		public void Serialize(CircularBuffer buffer)
 		{
 			buffer.Write(ref WorldId);

@@ -1,14 +1,97 @@
 using SharedMemory;
 using System;
-using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Thundagun
 {
 	public class MeshConnector
 	{
 		public Mesh mesh;
+
+		public void ApplyChanges(ApplyChangesMeshConnector packet)
+		{
+			//if (deserializedObject.localPath.Trim() == "NULL") return;
+
+			mesh.Clear();
+
+			if (packet.verts.Length > 0)
+				mesh.SetVertices(packet.verts);
+
+			mesh.indexFormat = ((((packet.verts.Length > 0) ? packet.verts.Length : 0) > 65535) ? IndexFormat.UInt32 : IndexFormat.UInt16);
+			//mesh.MarkDynamic(); // is this needed?
+
+			if (packet.normals.Length > 0)
+				mesh.SetNormals(packet.normals);
+			if (packet.tangents.Length > 0)
+				mesh.SetTangents(packet.tangents);
+			if (packet.triangleIndices.Length > 0)
+				mesh.SetTriangles(packet.triangleIndices, 0);
+			if (packet.colors.Length > 0)
+				mesh.SetColors(packet.colors);
+
+			bool isBlendshapeOnly = packet.blendShapeFrames.Length > 0 && packet.boneWeights.Length == 0;
+
+			Matrix4x4[] newBindPoseArr = null;
+			BoneWeight[] newBoneWeightArr = null;
+
+			if (isBlendshapeOnly)
+			{
+				//mesh.bindposes = new Matrix4x4[1];
+				newBindPoseArr = new Matrix4x4[1];
+				newBoneWeightArr = new BoneWeight[packet.verts.Length];
+			}
+			else
+			{
+				//mesh.boneWeights = new BoneWeight[deserializedObject.bindPoses.Length > 0 ? deserializedObject.verts.Length : 0];
+				newBoneWeightArr = new BoneWeight[packet.bindPoses.Length > 0 ? packet.verts.Length : 0]; // needed?
+				newBindPoseArr = new Matrix4x4[packet.boneWeights.Length]; // or Bone Count length?
+			}
+
+			if (isBlendshapeOnly)
+			{
+				newBindPoseArr[0] = Matrix4x4.identity;
+				BoneWeight boneWeight = default(BoneWeight);
+				boneWeight.boneIndex0 = 0;
+				boneWeight.boneIndex1 = 0;
+				boneWeight.boneIndex2 = 0;
+				boneWeight.boneIndex3 = 0;
+				boneWeight.weight0 = 1f;
+				boneWeight.weight1 = 0f;
+				boneWeight.weight2 = 0f;
+				boneWeight.weight3 = 0f;
+				for (int l = 0; l < packet.verts.Length; l++)
+				{
+					newBoneWeightArr[l] = boneWeight;
+				}
+				mesh.boneWeights = newBoneWeightArr;
+				mesh.bindposes = newBindPoseArr;
+			}
+			else
+			{
+				if (packet.bindPoses.Length > 0)
+				{
+					mesh.bindposes = packet.bindPoses;
+					mesh.boneWeights = packet.boneWeights;
+				}
+			}
+
+			foreach (var blendShapeFrame in packet.blendShapeFrames)
+			{
+				mesh.AddBlendShapeFrame(blendShapeFrame.name, blendShapeFrame.weight, blendShapeFrame.positions, blendShapeFrame.normals, blendShapeFrame.tangents);
+			}
+
+			//if (deserializedObject.verts.Length > 0) // needed?
+				//mesh.SetVertices(deserializedObject.verts);
+
+			mesh.bounds = packet.bounds;
+
+			//if (deserializedObject.verts.Length > 0)
+				//mesh.RecalculateBounds(); // needed?
+
+			mesh.UploadMeshData(false);
+		}
 	}
 	public struct BlendShapeFrame
 	{
@@ -31,6 +114,8 @@ namespace Thundagun
 		public Bounds bounds = new();
 		public string localPath;
 		public ulong ownerId;
+
+		public int Id => (int)PacketTypes.ApplyChangesMesh;
 		public void Deserialize(CircularBuffer buffer)
 		{
 			var bytes2 = new byte[Constants.MAX_STRING_LENGTH];
