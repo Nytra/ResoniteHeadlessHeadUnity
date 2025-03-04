@@ -2,8 +2,10 @@ using SharedMemory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 
 namespace Thundagun
 {
@@ -17,6 +19,7 @@ namespace Thundagun
 		public static HashSet<string> TriggeredLoaded = new();
 		public Queue<MaterialAction> mainActionQueue = new();
 		public string shaderLocalPath;
+		public GameObject proxy;
 
 		public void ProcessQueue()
 		{
@@ -115,8 +118,33 @@ namespace Thundagun
 
 			if (!AssetManager.FilePathToShader.ContainsKey(shaderFilePath))
 			{
+				if (!TriggeredLoaded.Contains(shaderFilePath))
+				{
+					TriggeredLoaded.Add(shaderFilePath);
+					ShaderConnector.LoadFromFileShader2(shaderFilePath, this, () => ProcessQueue());
+				}
 				return;
 			}
+
+			if (mat is null)
+			{
+				if (AssetManager.FilePathToShader.TryGetValue(shaderFilePath, out var shadConn))
+				{
+					Main.myLoggerStatic.PushMessage($"created new mat in apply material code");
+					mat = new Material(shadConn.shader);
+					shader = shadConn.shader;
+					foreach (var rend in renderers)
+					{
+						rend.sharedMaterial = mat;
+					}
+				}
+				else
+				{
+					//matConn.mat = new Material(DefaultMat.shader);
+					//renderer.sharedMaterial = matConn.mat;
+				}
+			}
+			
 
 			//if (AssetManager.FilePathToShader.TryGetValue(shaderPath, out var shadConn))
 			//{
@@ -153,7 +181,7 @@ namespace Thundagun
 			//		Main.myLoggerStatic.PushMessage($"Fixing wrong mat");
 			//		renderer.sharedMaterial = mat;
 			//	}
-					
+
 			//	//renderer.sharedMaterial = mat;
 			//	//matConn.shader = shad.shader;
 			//	//matConn.mat = renderer.sharedMaterial;

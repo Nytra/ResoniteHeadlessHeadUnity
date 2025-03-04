@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using SharedMemory;
 using TMPro;
 using UnityEditor;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Thundagun
 {
@@ -62,7 +63,10 @@ namespace Thundagun
 		public GameObject worldsRoot;
 		public GameObject camera1;
 		public Material DefaultMat;
-		public GameObject emptyGameObject;
+		//public GameObject emptyGameObject;
+		public GameObject shadersRoot;
+		public GameObject matsRoot;
+		public List<int> testList;
 		public float moveSpeed;
 		public float camSpeed;
 		private static bool started = false;
@@ -76,6 +80,8 @@ namespace Thundagun
 		//
 
 		public static MyLogger myLoggerStatic;
+		public static GameObject shadersRootStatic;
+		public static GameObject matsRootStatic;
 
 		private static BufferReadWrite syncBuffer;
 		private static Queue<Action> synchronousActions = new();
@@ -167,6 +173,8 @@ namespace Thundagun
 				started = true;
 
 				myLoggerStatic = myLogger;
+				shadersRootStatic = shadersRoot;
+				matsRootStatic = matsRoot;
 
 				var args = Environment.GetCommandLineArgs();
 				if (args != null)
@@ -514,60 +522,91 @@ namespace Thundagun
 
 													//MaterialConnector matConnMain = null;
 
-													if (AssetManager.OwnerIdToMaterial.TryGetValue(deserializedObject.matCompId, out MaterialConnector matConn))
+													if (deserializedObject.matCompId != default)
 													{
-														//matConnMain = matConn;
-														if (matConn.mat == null)
+														if (AssetManager.OwnerIdToMaterial.TryGetValue(deserializedObject.matCompId, out MaterialConnector matConn))
 														{
-															if (AssetManager.FilePathToShader.TryGetValue(deserializedObject.shaderFilePath, out var shadConn))
+															//matConnMain = matConn;
+															if (matConn.mat == null)
 															{
-																//myLogger.PushMessage($"created new mat in mesh renderer code");
-																//matConn.mat = new Material(shadConn.shader);
-																//matConn.shader = shadConn.shader;
-																//renderer.sharedMaterial = matConn.mat;
+																//if (AssetManager.FilePathToShader.TryGetValue(deserializedObject.shaderFilePath, out var shadConn))
+																//{
+																//	myLogger.PushMessage($"created new mat in mesh renderer code");
+																//	matConn.mat = new Material(shadConn.shader);
+																//	matConn.shader = shadConn.shader;
+																//	renderer.sharedMaterial = matConn.mat;
+																//}
+																//else
+																//{
+																//	//matConn.mat = new Material(DefaultMat.shader);
+																//	//renderer.sharedMaterial = matConn.mat;
+																//}
+
 															}
 															else
 															{
-																//matConn.mat = new Material(DefaultMat.shader);
-																//renderer.sharedMaterial = matConn.mat;
+																//if (matConn.mat.shader != matConn.shader)
+																//{
+																//matConn.mat.shader = matConn.shader;
+																//}
+																renderer.sharedMaterial = matConn.mat;
 															}
-															
+
+															if (!matConn.renderers.Contains(renderer))
+															{
+																matConn.renderers.Add(renderer);
+																if (matConn.proxy != null)
+																{
+																	var proxy = matConn.proxy.GetComponent<RendererList>();
+																	proxy.TheList.Add(renderer);
+																}
+															}
+
+															//myLogger.PushMessage($"MeshRenderer found existing mat: {deserializedObject.matId}");
 														}
 														else
 														{
-															//if (matConn.mat.shader != matConn.shader)
+															// here
+
+															MaterialConnector matConn2 = new();
+															//matConnMain = matConn2;
+															matConn2.renderers.Add(renderer);
+															matConn2.shaderFilePath = deserializedObject.shaderFilePath;
+															matConn2.shaderLocalPath = deserializedObject.shaderLocalPath;
+															matConn2.ownerId = deserializedObject.matCompId;
+															lock (AssetManager.OwnerIdToMaterial)
+																AssetManager.OwnerIdToMaterial.Add(deserializedObject.matCompId, matConn2);
+															renderer.gameObject.name = " - MatId: " + deserializedObject.matCompId.ToString();
+															myLogger.PushMessage($"MeshRenderer registered new mat conn: {deserializedObject.matCompId}");
+
+															var mat = new GameObject("");
+															matConn2.proxy = mat;
+															var rends = mat.AddComponent<RendererList>();
+															mat.transform.parent = matsRootStatic.transform;
+															mat.name = $"Mat: {deserializedObject.matCompId}, {deserializedObject.shaderFilePath}, {deserializedObject.shaderLocalPath}";
+															var rend = mat.AddComponent<MeshRenderer>();
+															matConn2.renderers.Add(rend);
+															rends.TheList.Add(rend);
+
+															matConn2.ApplyChanges(new Queue<MaterialAction>());
+
+															// to here
+
+															//if (AssetManager.FilePathToShader.TryGetValue(deserializedObject.shaderFilePath, out var shadConn))
 															//{
-																//matConn.mat.shader = matConn.shader;
+															//	myLogger.PushMessage($"created new mat in mesh renderer code 2");
+															//	matConn.mat = new Material(shadConn.shader);
+															//	matConn.shader = shadConn.shader;
+															//	renderer.sharedMaterial = matConn.mat;
 															//}
-															renderer.sharedMaterial = matConn.mat;
+															//else
+															//{
+															//	//matConn.mat = new Material(DefaultMat.shader);
+															//	//renderer.sharedMaterial = matConn.mat;
+															//}
 														}
-
-														if (!matConn.renderers.Contains(renderer))
-														{
-															matConn.renderers.Add(renderer);
-														}
-
-														//myLogger.PushMessage($"MeshRenderer found existing mat: {deserializedObject.matId}");
 													}
-													else
-													{
-														MaterialConnector matConn2 = new();
-														//matConnMain = matConn2;
-														matConn2.renderers.Add(renderer);
-														//matConn2.shaderPath = deserializedObject.shaderPath;
-														matConn2.ownerId = deserializedObject.matCompId;
-														AssetManager.OwnerIdToMaterial.Add(deserializedObject.matCompId, matConn2);
-														renderer.gameObject.name = " - MatId: " + deserializedObject.matCompId.ToString();
-														myLogger.PushMessage($"MeshRenderer registered new mat conn: {deserializedObject.matCompId}");
-
-														//if (AssetManager.FilePathToShader.TryGetValue(deserializedObject.shaderPath, out var shadConn))
-														//{
-															//myLogger.PushMessage($"created new mat in mesh renderer code 2");
-															//matConn.mat = new Material(shadConn.shader);
-															//matConn.shader = shadConn.shader;
-															//renderer.sharedMaterial = matConn.mat;
-														//}
-													}
+													
 
 													//if (deserializedObject.shaderPath != null)
 														//matConnMain.shaderPath = deserializedObject.shaderPath;
@@ -626,7 +665,8 @@ namespace Thundagun
 														{
 															MaterialConnector matConn2 = new();
 															matConn2.shaderFilePath = deserializedObject.shaderFilePath;
-															AssetManager.OwnerIdToMaterial.Add(deserializedObject.matCompId, matConn2);
+															lock (AssetManager.OwnerIdToMaterial)
+																AssetManager.OwnerIdToMaterial.Add(deserializedObject.matCompId, matConn2);
 															myLogger.PushMessage($"SkinnedMeshRenderer registered new mat using default shader");
 														}
 													}
@@ -811,15 +851,15 @@ namespace Thundagun
 										}
 									});
 								}
-								else if (num == (int)PacketTypes.LoadFromFileShader)
-								{
-									LoadFromFileShaderConnector deserializedObject = new();
-									deserializedObject.Deserialize(buffer);
+								//else if (num == (int)PacketTypes.LoadFromFileShader)
+								//{
+								//	LoadFromFileShaderConnector deserializedObject = new();
+								//	deserializedObject.Deserialize(buffer);
 
-									RunSynchronously(() => myLogger.PushMessage($"LoadFromFileShader: {deserializedObject.File}"));
+								//	RunSynchronously(() => myLogger.PushMessage($"LoadFromFileShader: {deserializedObject.File}"));
 
-									RunSynchronously(() => ShaderConnector.LoadFromFileShader(deserializedObject));
-								}
+								//	RunSynchronously(() => ShaderConnector.LoadFromFileShader2(deserializedObject));
+								//}
 								else if (num == (int)PacketTypes.ApplyChangesMesh)
 								{
 									ApplyChangesMeshConnector deserializedObject = new();
@@ -855,21 +895,42 @@ namespace Thundagun
 
 									//RunSynchronously(() => myLoggerStatic.PushMessage(deserializedObject.ToString()));
 
-									MaterialConnector matConn = null;
-									if (!AssetManager.OwnerIdToMaterial.TryGetValue(deserializedObject.ownerId, out matConn))
+									RunSynchronously(() => 
 									{
-										matConn = new();
-										RunSynchronously(() => matConn.mat = new Material(DefaultMat.shader));
+										MaterialConnector matConn = null;
+										if (deserializedObject.ownerId != default)
+										{
+											if (!AssetManager.OwnerIdToMaterial.TryGetValue(deserializedObject.ownerId, out matConn))
+											{
+												matConn = new();
+												//matConn.mat = new Material(DefaultMat.shader);
+
+												lock (AssetManager.OwnerIdToMaterial)
+													AssetManager.OwnerIdToMaterial.Add(deserializedObject.ownerId, matConn);
+
+												myLoggerStatic.PushMessage($"ApplyChangesMaterial registered new mat: {deserializedObject.ownerId}");
+
+												var mat = new GameObject("");
+												matConn.proxy = mat;
+												var rends = mat.AddComponent<RendererList>();
+												mat.transform.parent = matsRootStatic.transform;
+												//mat.name = $"Mat: {deserializedObject.ownerId}, {deserializedObject.shaderFilePath}, {deserializedObject.shaderLocalPath}";
+												var rend = mat.AddComponent<MeshRenderer>();
+												matConn.renderers.Add(rend);
+												rends.TheList.Add(rend);
+											}
+
+											matConn.ownerId = deserializedObject.ownerId;
+											matConn.shaderFilePath = deserializedObject.shaderFilePath;
+											matConn.shaderLocalPath = deserializedObject.shaderLocalPath;
+
+											if (matConn.proxy != null)
+												matConn.proxy.name = $"Mat: {deserializedObject.ownerId}, {deserializedObject.shaderFilePath}, {deserializedObject.shaderLocalPath}";
+
+											matConn.ApplyChanges(deserializedObject.actionQueue);
+										}
 										
-										AssetManager.OwnerIdToMaterial.Add(deserializedObject.ownerId, matConn);
-										RunSynchronously(() => myLoggerStatic.PushMessage($"ApplyChangesMaterial registered new mat: {deserializedObject.ownerId}"));
-									}
-
-									matConn.ownerId = deserializedObject.ownerId;
-									matConn.shaderFilePath = deserializedObject.shaderFilePath;
-									matConn.shaderLocalPath = deserializedObject.shaderLocalPath;
-
-									RunSynchronously(() => matConn.ApplyChanges(deserializedObject.actionQueue));
+									});
 								}
 								else if (num == (int)PacketTypes.InitializeMaterialProperties)
 								{
@@ -964,7 +1025,7 @@ namespace Thundagun
 					}
 					catch (Exception ex)
 					{
-						myLogger.PushMessage(ex.ToString());
+						myLogger.PushMessage("Error in synchronous action: " + ex.ToString());
 					}
 				}
 			}
