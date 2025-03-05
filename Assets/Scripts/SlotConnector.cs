@@ -4,6 +4,7 @@ using System.Text;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Collections.Generic;
+using UnityEngine.UIElements;
 
 namespace Thundagun
 {
@@ -23,7 +24,7 @@ namespace Thundagun
 		private SlotConnector _lastParent;
 		public bool IsRootSlot;
 		public ulong parentId;
-		public bool ForceRender;
+		//public bool ForceShowDebugVisuals;
 		public bool IsLocalElement;
 
 		public List<MeshRendererConnector> Meshes = new();
@@ -175,8 +176,7 @@ namespace Thundagun
 		public long WorldId;
 		public bool IsUserRootSlot;
 		public bool HasActiveUser;
-		public bool ShouldRender;
-		public bool ForceRender;
+		public bool ShowDebugVisuals;
 		public bool IsLocalElement;
 
 		public int Id => (int)PacketTypes.ApplyChangesSlot;
@@ -220,9 +220,7 @@ namespace Thundagun
 
 			buffer.Write(ref HasActiveUser);
 
-			buffer.Write(ref ShouldRender);
-
-			buffer.Write(ref ForceRender);
+			buffer.Write(ref ShowDebugVisuals);
 
 			buffer.Write(ref IsLocalElement);
 		}
@@ -273,16 +271,14 @@ namespace Thundagun
 
 			buffer.Read(out HasActiveUser);
 
-			buffer.Read(out ShouldRender);
-
-			buffer.Read(out ForceRender);
+			buffer.Read(out ShowDebugVisuals);
 
 			buffer.Read(out IsLocalElement);
 		}
 
 		public override string ToString()
 		{
-			return $"ApplyChangesSlotConnector: {Active} {ActiveChanged} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} SlotName {WorldId} {IsUserRootSlot} {HasActiveUser} {ShouldRender} {ForceRender}";
+			return $"ApplyChangesSlotConnector: {Active} {ActiveChanged} {Position} {PositionChanged} {Rotation} {RotationChanged} {Scale} {ScaleChanged} {RefId} {ParentRefId} {HasParent} {IsRootSlot} {Reparent} SlotName {WorldId} {IsUserRootSlot} {HasActiveUser} {ShowDebugVisuals}";
 		}
 	}
 

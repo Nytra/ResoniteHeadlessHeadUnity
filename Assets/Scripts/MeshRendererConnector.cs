@@ -24,6 +24,7 @@ namespace Thundagun
 		public string meshPath;
 		public ulong meshCompId;
 		public List<float> blendShapeWeights = new();
+		public bool enabled;
 
 		public int Id => (int)PacketTypes.ApplyChangesMeshRenderer;
 
@@ -32,6 +33,8 @@ namespace Thundagun
 			buffer.Read(out slotRefId);
 			buffer.Read(out worldId);
 			buffer.Read(out isSkinned);
+
+			buffer.Read(out enabled);
 
 			var bytes2 = new byte[Constants.MAX_STRING_LENGTH];
 			buffer.Read(bytes2);
@@ -76,6 +79,8 @@ namespace Thundagun
 			buffer.Write(ref slotRefId);
 			buffer.Write(ref worldId);
 			buffer.Write(ref isSkinned);
+
+			buffer.Write(ref enabled);
 
 			buffer.Write(Encoding.UTF8.GetBytes(shaderFilePath));
 

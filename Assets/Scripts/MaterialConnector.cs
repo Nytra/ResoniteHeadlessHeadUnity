@@ -57,48 +57,57 @@ namespace Thundagun
 				{
 					var action = copy.Dequeue();
 					//Main.myLoggerStatic.PushMessage($"MaterialAction: {action.type} {action.propertyIndex} {action.float4Value} {action.obj}");
-					switch (action.type)
+
+					try
 					{
-						case ActionType.Flag:
-							mat.SetKeyword(new LocalKeyword(shader, (string)action.obj), action.float4Value.x > 0f);
-							break;
-						case ActionType.Instancing:
-							mat.enableInstancing = action.float4Value.x > 0f;
-							break;
-						case ActionType.RenderQueue:
-							mat.renderQueue = (int)action.float4Value.x;
-							break;
-						case ActionType.Tag:
-							{
-								if (action.propertyIndex == 0) // MaterialTag.RenderType
+						switch (action.type)
+						{
+							case ActionType.Flag:
+								if (string.IsNullOrWhiteSpace((string)action.obj) || ((string)action.obj).StartsWith("NULL")) break; // oof?
+								mat.SetKeyword(new LocalKeyword(shader, (string)action.obj), action.float4Value.x > 0f); // can throw NULL keyword???
+								break;
+							case ActionType.Instancing:
+								mat.enableInstancing = action.float4Value.x > 0f;
+								break;
+							case ActionType.RenderQueue:
+								mat.renderQueue = (int)action.float4Value.x;
+								break;
+							case ActionType.Tag:
 								{
-									mat.SetOverrideTag("RenderType", action.obj as string);
+									if (action.propertyIndex == 0) // MaterialTag.RenderType
+									{
+										mat.SetOverrideTag("RenderType", action.obj as string);
+										break;
+									}
+									throw new ArgumentException("Unknown material tag: " + action.propertyIndex);
+								}
+							case ActionType.Float:
+								mat.SetFloat(action.propertyIndex, action.float4Value.x);
+								break;
+							case ActionType.Float4:
+								mat.SetVector(action.propertyIndex, action.float4Value);
+								break;
+							case ActionType.FloatArray:
+								mat.SetFloatArray(action.propertyIndex, (List<float>)action.obj);
+								break;
+							case ActionType.Float4Array:
+								{
+									//List<Vector4> list = GetUnityVectorArray(ref action);
+									mat.SetVectorArray(action.propertyIndex, (List<Vector4>)action.obj);
+									//Pool.Return(ref list);
 									break;
 								}
-								throw new ArgumentException("Unknown material tag: " + action.propertyIndex);
-							}
-						case ActionType.Float:
-							mat.SetFloat(action.propertyIndex, action.float4Value.x);
-							break;
-						case ActionType.Float4:
-							mat.SetVector(action.propertyIndex, action.float4Value);
-							break;
-						case ActionType.FloatArray:
-							mat.SetFloatArray(action.propertyIndex, (List<float>)action.obj);
-							break;
-						case ActionType.Float4Array:
-							{
-								//List<Vector4> list = GetUnityVectorArray(ref action);
-								mat.SetVectorArray(action.propertyIndex, (List<Vector4>)action.obj);
-								//Pool.Return(ref list);
+							case ActionType.Matrix:
+								//matConn.mat.SetMatrix(action.propertyIndex, GetMatrix(ref action).ToUnity()); // this is never used in frooxengine
 								break;
-							}
-						case ActionType.Matrix:
-							//matConn.mat.SetMatrix(action.propertyIndex, GetMatrix(ref action).ToUnity()); // aaaaaaaaa
-							break;
-						case ActionType.Texture:
-							//matConn.mat.SetTexture(action.propertyIndex, (action.obj as ITexture)?.GetUnity());
-							break;
+							case ActionType.Texture:
+								//matConn.mat.SetTexture(action.propertyIndex, (action.obj as ITexture)?.GetUnity());
+								break;
+						}
+					}
+					catch (Exception e)
+					{
+						Main.myLoggerStatic.PushMessage("Error processing mat queue: " + e.ToString());
 					}
 				}
 			}
@@ -132,7 +141,7 @@ namespace Thundagun
 			{
 				if (AssetManager.FilePathToShader.TryGetValue(shaderFilePath, out var shadConn))
 				{
-					Main.myLoggerStatic.PushMessage($"created new mat in apply material code");
+					//Main.myLoggerStatic.PushMessage($"created new mat in apply material code");
 					//lock (mat)
 					mat = new Material(shadConn.shader);
 					shader = shadConn.shader;

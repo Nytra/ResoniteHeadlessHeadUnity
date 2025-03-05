@@ -300,19 +300,19 @@ namespace Thundagun
 		}
 	}
 
-	public class ShaderLoadedCallback : IUpdatePacket
-	{
-		public string shaderPath;
-		public int Id => (int)PacketTypes.ShaderLoadedCallback;
+	//public class ShaderLoadedCallback : IUpdatePacket
+	//{
+	//	public string shaderPath;
+	//	public int Id => (int)PacketTypes.ShaderLoadedCallback;
 
-		public void Deserialize(CircularBuffer buffer)
-		{
-			buffer.ReadString(out shaderPath);
-		}
+	//	public void Deserialize(CircularBuffer buffer)
+	//	{
+	//		buffer.ReadString(out shaderPath);
+	//	}
 
-		public void Serialize(CircularBuffer buffer)
-		{
-			buffer.WriteString(shaderPath);
-		}
-	}
+	//	public void Serialize(CircularBuffer buffer)
+	//	{
+	//		buffer.WriteString(shaderPath);
+	//	}
+	//}
 }
