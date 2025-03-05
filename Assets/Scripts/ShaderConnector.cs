@@ -39,13 +39,15 @@ namespace Thundagun
 									shad.shader = shaderRequest.asset as Shader;
 									shad.filePath = FilePath;
 									matConn.shader = shad.shader;
+									//lock (matConn.mat)
 									matConn.mat = new Material(shad.shader);
 
 									//shad.localPath = packet.LocalPath;
+									//lock (AssetManager.FilePathToShader)
 									AssetManager.FilePathToShader.Add(FilePath, shad);
 									Main.myLoggerStatic.PushMessage($"Successfully loaded a shader from the bundle {FilePath}");
 
-									callback?.Invoke();
+									//callback?.Invoke();
 
 									//ShaderLoadedCallback callback2 = new();
 									//callback2.shaderPath = FilePath;
@@ -73,6 +75,28 @@ namespace Thundagun
 										//	}
 										//}
 
+										//matConn.mat = matConn.mat;
+										//matConn.shader = matConn.shader;
+										foreach (var renderer in matConn.renderers)
+										{
+											//if (renderer.sharedMaterial.shader == shad.shader) continue;
+											//Main.myLoggerStatic.PushMessage($"Applying shader retroactively to a renderer with name: {renderer.gameObject.name}");
+											renderer.sharedMaterial = matConn.mat;
+											renderer.gameObject.name += " HAS MAT";
+											//renderer.sharedMaterial = mat;
+											//matConn.shader = shad.shader;
+											//matConn.mat = renderer.sharedMaterial;
+										}
+										foreach (var renderer in matConn.skinnedRenderers)
+										{
+											//if (renderer.sharedMaterial.shader == shad.shader) continue;
+											//Main.myLoggerStatic.PushMessage($"Applying shader retroactively to a renderer with name: {renderer.gameObject.name}");
+											renderer.sharedMaterial = matConn.mat;
+											renderer.gameObject.name += " HAS MAT";
+											//renderer.sharedMaterial = mat;
+											//matConn.shader = shad.shader;
+											//matConn.mat = renderer.sharedMaterial;
+										}
 
 										foreach (var matConn2 in AssetManager.OwnerIdToMaterial.Values.ToArray())
 										{
@@ -89,31 +113,10 @@ namespace Thundagun
 												//{
 												//	matConn2.mat.shader = matConn.shader;
 												//}
-												matConn2.mat = matConn.mat;
-												matConn2.shader = matConn.shader;
-												foreach (var renderer in matConn2.renderers)
-												{
-													//if (renderer.sharedMaterial.shader == shad.shader) continue;
-													//Main.myLoggerStatic.PushMessage($"Applying shader retroactively to a renderer with name: {renderer.gameObject.name}");
-													renderer.sharedMaterial = matConn2.mat;
-													renderer.gameObject.name += " HAS MAT";
-													//renderer.sharedMaterial = mat;
-													//matConn.shader = shad.shader;
-													//matConn.mat = renderer.sharedMaterial;
-												}
-												foreach (var renderer in matConn2.skinnedRenderers)
-												{
-													//if (renderer.sharedMaterial.shader == shad.shader) continue;
-													//Main.myLoggerStatic.PushMessage($"Applying shader retroactively to a renderer with name: {renderer.gameObject.name}");
-													renderer.sharedMaterial = matConn2.mat;
-													renderer.gameObject.name += " HAS MAT";
-													//renderer.sharedMaterial = mat;
-													//matConn.shader = shad.shader;
-													//matConn.mat = renderer.sharedMaterial;
-												}
+												
 											}
-
-											matConn2.ApplyChanges(new System.Collections.Generic.Queue<MaterialAction>());
+											if (matConn2.shaderFilePath == matConn.shaderFilePath)
+												matConn2.ApplyChanges(new System.Collections.Generic.Queue<MaterialAction>());
 											//else if (matConn2.shaderFilePath == matConn.shaderFilePath)
 											//{
 												//matConn2.mat = matConn.mat;

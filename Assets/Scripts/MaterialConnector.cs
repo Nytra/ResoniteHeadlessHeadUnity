@@ -56,6 +56,7 @@ namespace Thundagun
 				while (copy != null && copy.Count > 0)
 				{
 					var action = copy.Dequeue();
+					//Main.myLoggerStatic.PushMessage($"MaterialAction: {action.type} {action.propertyIndex} {action.float4Value} {action.obj}");
 					switch (action.type)
 					{
 						case ActionType.Flag:
@@ -132,22 +133,27 @@ namespace Thundagun
 				if (AssetManager.FilePathToShader.TryGetValue(shaderFilePath, out var shadConn))
 				{
 					Main.myLoggerStatic.PushMessage($"created new mat in apply material code");
+					//lock (mat)
 					mat = new Material(shadConn.shader);
 					shader = shadConn.shader;
 					foreach (var rend in renderers)
 					{
+						//if (rend.material != null) continue;
 						rend.sharedMaterial = mat;
 					}
 					foreach (var rend in skinnedRenderers)
 					{
+						//if (rend.material != null) continue;
 						rend.sharedMaterial = mat;
 					}
+					ProcessQueue();
 				}
 				else
 				{
 					//matConn.mat = new Material(DefaultMat.shader);
 					//renderer.sharedMaterial = matConn.mat;
 				}
+				return;
 			}
 			
 
