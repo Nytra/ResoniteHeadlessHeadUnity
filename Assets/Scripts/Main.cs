@@ -717,7 +717,7 @@ namespace Thundagun
 																//	//matConn.mat = new Material(DefaultMat.shader);
 																//	//renderer.sharedMaterial = matConn.mat;
 																//}
-
+																myLogger.PushMessage($"MeshRenderer found mat but it was null {deserializedObject.matCompId}");
 															}
 															else
 															{
@@ -738,37 +738,48 @@ namespace Thundagun
 																}
 															}
 
+															matConn.ownerId = deserializedObject.matCompId;
+															if (matConn.shaderFilePath != "NULL")
+																matConn.shaderFilePath = deserializedObject.shaderFilePath;
+															if (matConn.shaderLocalPath != "NULL")
+																matConn.shaderLocalPath = deserializedObject.shaderLocalPath;
+
+															if (matConn.proxy != null)
+																matConn.proxy.name = $"Mat: {deserializedObject.matCompId}, {deserializedObject.shaderFilePath}, {deserializedObject.shaderLocalPath}";
+
+															matConn.ApplyChanges(new Queue<MaterialAction>());
+
 															//myLogger.PushMessage($"MeshRenderer found existing mat: {deserializedObject.matId}");
 														}
 														else
 														{
 															// here
 
-															MaterialConnector matConn2 = new();
-															//matConnMain = matConn2;
-															matConn2.skinnedRenderers.Add(skinned);
-															if (matConn2.shaderFilePath == null || deserializedObject.shaderFilePath != "NULL")
-																matConn2.shaderFilePath = deserializedObject.shaderFilePath;
-															if (matConn2.shaderLocalPath == null || deserializedObject.shaderLocalPath != "NULL")
-																matConn2.shaderLocalPath = deserializedObject.shaderLocalPath;
-															matConn2.ownerId = deserializedObject.matCompId;
-															lock (AssetManager.OwnerIdToMaterial)
-																AssetManager.OwnerIdToMaterial.Add(deserializedObject.matCompId, matConn2);
-															skinned.gameObject.name = " - MatId: " + deserializedObject.matCompId.ToString();
-															myLogger.PushMessage($"MeshRenderer registered new mat conn: {deserializedObject.matCompId}");
+															//MaterialConnector matConn2 = new();
+															////matConnMain = matConn2;
+															//matConn2.skinnedRenderers.Add(skinned);
+															//if (matConn2.shaderFilePath == null || deserializedObject.shaderFilePath != "NULL")
+															//	matConn2.shaderFilePath = deserializedObject.shaderFilePath;
+															//if (matConn2.shaderLocalPath == null || deserializedObject.shaderLocalPath != "NULL")
+															//	matConn2.shaderLocalPath = deserializedObject.shaderLocalPath;
+															//matConn2.ownerId = deserializedObject.matCompId;
+															//lock (AssetManager.OwnerIdToMaterial)
+															//	AssetManager.OwnerIdToMaterial.Add(deserializedObject.matCompId, matConn2);
+															//skinned.gameObject.name = " - MatId: " + deserializedObject.matCompId.ToString();
+															//myLogger.PushMessage($"MeshRenderer registered new mat conn: {deserializedObject.matCompId}");
 
-															var mat = new GameObject("");
-															matConn2.proxy = mat;
-															var rends = mat.AddComponent<MatDebug>();
-															mat.transform.parent = matsRootStatic.transform;
-															mat.name = $"Mat: {deserializedObject.matCompId}, {deserializedObject.shaderFilePath}, {deserializedObject.shaderLocalPath}";
-															//mat.name = "NULL";
-															var rend = mat.AddComponent<MeshRenderer>();
-															matConn2.renderers.Add(rend);
-															rends.TheList.Add(rend);
-															rends.matConn = matConn;
+															//var mat = new GameObject("");
+															//matConn2.proxy = mat;
+															//var rends = mat.AddComponent<MatDebug>();
+															//mat.transform.parent = matsRootStatic.transform;
+															//mat.name = $"Mat: {deserializedObject.matCompId}, {deserializedObject.shaderFilePath}, {deserializedObject.shaderLocalPath}";
+															////mat.name = "NULL";
+															//var rend = mat.AddComponent<MeshRenderer>();
+															//matConn2.renderers.Add(rend);
+															//rends.TheList.Add(rend);
+															//rends.matConn = matConn;
 
-															matConn2.ApplyChanges(new Queue<MaterialAction>()); // to get the mat to instantiate if its null
+															//matConn2.ApplyChanges(new Queue<MaterialAction>()); // to get the mat to instantiate if its null
 
 															//Task.Run(async () => 
 															//{ 
